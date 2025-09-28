@@ -1,5 +1,4 @@
 import { join } from "node:path"
-import viteFastify from "@fastify/vite/plugin"
 import viteReact from "@vitejs/plugin-react"
 import tailwindcss from "@tailwindcss/vite"
 
@@ -10,14 +9,11 @@ export default {
     emptyOutDir: true,
   },
   plugins: [
-    viteFastify({ 
-      spa: true, 
-      useRelativePaths: false,
-      dev: {
-        outDir: join(import.meta.dirname, "dist")
-      }
-    }),
     viteReact(),
     tailwindcss(),
   ],
+  server: {
+    port: 3000,
+    open: true
+  }
 }

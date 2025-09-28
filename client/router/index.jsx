@@ -1,8 +1,5 @@
 import React from 'react';
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
-import { useAtomValue } from 'jotai';
-import { tokenAtom } from '../auth/authAtom';
-import Auth from '../auth';
 import Layout from '../components/Layout';
 import PoolScreener from '../components/PoolScreener';
 import TechnicalScreener from '../components/TechnicalScreener';
@@ -47,12 +44,6 @@ const router = createBrowserRouter([
 ]);
 
 export default function AppRouter() {
-  const token = useAtomValue(tokenAtom);
-  
-  if (!token) {
-    return <Auth />;
-  }
-  
   return (
     <ErrorBoundary>
       <RouterProvider router={router} />
