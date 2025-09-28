@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>股票名称测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .input-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input {
+            width: 200px;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            background-color: #1890ff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-left: 10px;
+        }
+        button:hover {
+            background-color: #40a9ff;
+        }
+        .result {
+            margin-top: 15px;
+            padding: 15px;
+            background-color: #f6f8fa;
+            border-radius: 4px;
+            border-left: 4px solid #1890ff;
+        }
+        .error {
+            border-left-color: #ff4d4f;
+            background-color: #fff2f0;
+        }
+        .success {
+            border-left-color: #52c41a;
+            background-color: #f6ffed;
+        }
+        pre {
+            background-color: #f6f8fa;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>股票名称获取测试</h1>
+        
+        <div class="test-section">
+            <h2>测试股票信息获取</h2>
+            <div class="input-group">
+                <label for="stockCode">股票代码:</label>
+                <input type="text" id="stockCode" placeholder="例如: 000001" value="000001">
+                <button onclick="testStockInfo()">获取股票信息</button>
+            </div>
+            <div id="stockInfoResult" class="result" style="display: none;">
+                <h3>股票信息:</h3>
+                <pre id="stockInfoData"></pre>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>测试多个股票</h2>
+            <div class="input-group">
+                <label>测试股票列表:</label>
+                <button onclick="testMultipleStocks()">测试多个股票</button>
+            </div>
+            <div id="multipleStocksResult" class="result" style="display: none;">
+                <h3>多个股票信息:</h3>
+                <pre id="multipleStocksData"></pre>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        // 导入StockService
+        import { StockService } from '../services/stockService.js';
+
+        // 测试单个股票信息
+        window.testStockInfo = async function() {
+            const stockCode = document.getElementById('stockCode').value.trim();
+            if (!stockCode) {
+                alert('请输入股票代码');
+                return;
+            }
+
+            const resultDiv = document.getElementById('stockInfoResult');
+            const dataDiv = document.getElementById('stockInfoData');
+            
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'result';
+            dataDiv.textContent = '正在获取股票信息...';
+
+            try {
+                console.log(`🔍 测试股票代码: ${stockCode}`);
+                const stockInfo = await StockService.getStockInfo(stockCode);
+                console.log('股票信息:', stockInfo);
+                
+                dataDiv.textContent = JSON.stringify(stockInfo, null, 2);
+                resultDiv.className = 'result success';
+                
+                // 显示关键信息
+                const summary = `
+股票代码: ${stockInfo.code || 'N/A'}
+股票名称: ${stockInfo.name || 'N/A'}
+当前价格: ${stockInfo.price || 'N/A'}
+涨跌幅: ${stockInfo.change || 'N/A'}%
+市场: ${stockInfo.market || 'N/A'}
+                `;
+                
+                dataDiv.textContent = summary + '\n\n完整数据:\n' + JSON.stringify(stockInfo, null, 2);
+                
+            } catch (error) {
+                console.error('获取股票信息失败:', error);
+                dataDiv.textContent = `错误: ${error.message}`;
+                resultDiv.className = 'result error';
+            }
+        };
+
+        // 测试多个股票
+        window.testMultipleStocks = async function() {
+            const testStocks = ['000001', '000002', '600036', '300001', '688001'];
+            const resultDiv = document.getElementById('multipleStocksResult');
+            const dataDiv = document.getElementById('multipleStocksData');
+            
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'result';
+            dataDiv.textContent = '正在获取多个股票信息...';
+
+            try {
+                const results = [];
+                
+                for (const code of testStocks) {
+                    try {
+                        console.log(`🔍 测试股票代码: ${code}`);
+                        const stockInfo = await StockService.getStockInfo(code);
+                        results.push({
+                            code: code,
+                            success: true,
+                            data: stockInfo
+                        });
+                        console.log(`✅ ${code} 成功:`, stockInfo);
+                    } catch (error) {
+                        results.push({
+                            code: code,
+                            success: false,
+                            error: error.message
+                        });
+                        console.error(`❌ ${code} 失败:`, error);
+                    }
+                }
+                
+                dataDiv.textContent = JSON.stringify(results, null, 2);
+                resultDiv.className = 'result success';
+                
+            } catch (error) {
+                console.error('批量测试失败:', error);
+                dataDiv.textContent = `错误: ${error.message}`;
+                resultDiv.className = 'result error';
+            }
+        };
+    </script>
+</body>
+</html>
