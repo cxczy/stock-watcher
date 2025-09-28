@@ -20,6 +20,8 @@
 
 ### 目标React技术栈
 - 根据当前的package.json
+- 用js不要ts
+- 用pnpm
 
 ## 核心业务逻辑提取
 

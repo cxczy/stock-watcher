@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API测试</title>
+</head>
+<body>
+    <h1>股票API测试</h1>
+    <button onclick="testAPI()">测试API</button>
+    <div id="result"></div>
+
+    <script>
+        async function testAPI() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '正在测试...';
+            
+            try {
+                // 测试600563（法拉电子）
+                const url = 'https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=1.600563&fields1=f1%2Cf2%2Cf3%2Cf4%2Cf5&fields2=f51%2Cf52%2Cf53%2Cf54%2Cf55%2Cf56%2Cf57%2Cf58%2Cf59%2Cf60%2Cf61&lmt=10&klt=101&fqt=1&end=30000101&ut=fa5fd1943c7b386f172d6893dbfba10b';
+                
+                console.log('请求URL:', url);
+                
+                const response = await fetch(url);
+                console.log('响应状态:', response.status);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP错误: ${response.status}`);
+                }
+                
+                const text = await response.text();
+                console.log('响应数据:', text.substring(0, 200) + '...');
+                
+                const data = JSON.parse(text);
+                console.log('解析后的数据:', data);
+                
+                if (data.rc === 0 && data.data && data.data.klines) {
+                    const klines = data.data.klines;
+                    resultDiv.innerHTML = `
+                        <h3>测试成功！</h3>
+                        <p>股票代码: ${data.data.code}</p>
+                        <p>股票名称: ${data.data.name}</p>
+                        <p>数据条数: ${klines.length}</p>
+                        <p>最新数据: ${klines[klines.length - 1]}</p>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `<p>API返回错误: ${data.rc}</p>`;
+                }
+            } catch (error) {
+                console.error('测试失败:', error);
+                resultDiv.innerHTML = `<p style="color: red;">测试失败: ${error.message}</p>`;
+            }
+        }
+    </script>
+</body>
+</html>

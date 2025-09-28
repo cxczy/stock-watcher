@@ -6,13 +6,14 @@ import "@ant-design/v5-patch-for-react-19"
 import { useAtomValue } from "jotai"
 import { tokenAtom } from "./auth/authAtom"
 import Auth from "./auth"
+import StockAnalysis from "./components/StockAnalysis"
 dayjs.locale("zh-cn")
 
 function Base() {
   const token = useAtomValue(tokenAtom)
   return (
     <ConfigProvider locale={zhCN}>
-      {token ? <div>...</div> : <Auth />}
+      {token ? <StockAnalysis /> : <Auth />}
     </ConfigProvider>
   )
 }
