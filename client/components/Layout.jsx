@@ -74,7 +74,7 @@ export default function Layout() {
           overflow: 'hidden',
           whiteSpace: 'nowrap'
         }}>
-          {collapsed ? '股票' : '股票分析系统'}
+          {collapsed ? '' : ''}
         </div>
         <Menu
           mode="inline"
@@ -110,7 +110,7 @@ export default function Layout() {
         </Header>
         <Content style={{ 
           margin: 0, 
-          padding: 24, 
+          padding: 0, 
           background: '#f5f5f5',
           minHeight: 'calc(100vh - 64px)'
         }}>

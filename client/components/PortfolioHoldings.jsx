@@ -26,7 +26,9 @@ import {
   LineChartOutlined,
   EditOutlined,
   FolderAddOutlined,
-  FolderOutlined
+  FolderOutlined,
+  DownloadOutlined,
+  UploadOutlined
 } from '@ant-design/icons';
 import { StockService } from '../services/stockService.js';
 import { SimpleIndicators } from '../utils/simpleIndicators.js';
@@ -70,6 +72,8 @@ export default function PortfolioHoldings() {
   const [isAddGroupModalVisible, setIsAddGroupModalVisible] = useState(false);
   const [isEditGroupModalVisible, setIsEditGroupModalVisible] = useState(false);
   const [editingGroup, setEditingGroup] = useState(null);
+  const [isImportModalVisible, setIsImportModalVisible] = useState(false);
+  const [importData, setImportData] = useState('');
 
   // 初始化持仓数据
   useEffect(() => {
@@ -77,12 +81,80 @@ export default function PortfolioHoldings() {
     if (savedHoldings) {
       setHoldings(JSON.parse(savedHoldings));
     }
+
+    const savedGroups = localStorage.getItem('portfolioGroups');
+    if (savedGroups) {
+      setGroups(JSON.parse(savedGroups));
+    }
   }, []);
 
   // 保存持仓数据到本地存储
   const saveHoldings = (newHoldings) => {
     setHoldings(newHoldings);
     localStorage.setItem('portfolioHoldings', JSON.stringify(newHoldings));
+  };
+
+  // 保存分组配置到本地存储
+  const saveGroups = (newGroups) => {
+    setGroups(newGroups);
+    localStorage.setItem('portfolioGroups', JSON.stringify(newGroups));
+  };
+
+  // 导出所有数据
+  const handleExportData = () => {
+    const exportData = {
+      groups: groups,
+      holdings: holdings,
+      exportTime: new Date().toISOString(),
+      version: '1.0'
+    };
+
+    const dataStr = JSON.stringify(exportData, null, 2);
+    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(dataBlob);
+    
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `portfolio_data_${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    
+    message.success('数据导出成功');
+  };
+
+  // 导入数据
+  const handleImportData = () => {
+    if (!importData.trim()) {
+      message.warning('请输入要导入的数据');
+      return;
+    }
+
+    try {
+      const importedData = JSON.parse(importData);
+      
+      if (!importedData.groups || !importedData.holdings) {
+        message.error('数据格式不正确');
+        return;
+      }
+
+      // 合并数据（保留现有数据，添加新数据）
+      const newGroups = { ...groups, ...importedData.groups };
+      const newHoldings = { ...holdings, ...importedData.holdings };
+
+      setGroups(newGroups);
+      setHoldings(newHoldings);
+      saveGroups(newGroups);
+      saveHoldings(newHoldings);
+      
+      setImportData('');
+      setIsImportModalVisible(false);
+      message.success('数据导入成功');
+    } catch (error) {
+      console.error('导入数据失败:', error);
+      message.error('数据格式错误，请检查JSON格式');
+    }
   };
 
   // 添加股票到当前分组
@@ -379,8 +451,14 @@ export default function PortfolioHoldings() {
       showRating: false
     };
 
-    setGroups({ ...groups, [newGroupName]: newGroup });
-    setHoldings({ ...holdings, [newGroupName]: [] });
+    const newGroups = { ...groups, [newGroupName]: newGroup };
+    const newHoldings = { ...holdings, [newGroupName]: [] };
+    
+    setGroups(newGroups);
+    setHoldings(newHoldings);
+    saveGroups(newGroups);
+    saveHoldings(newHoldings);
+    
     setNewGroupName('');
     setNewGroupDescription('');
     setIsAddGroupModalVisible(false);
@@ -400,6 +478,7 @@ export default function PortfolioHoldings() {
     delete newHoldings[groupName];
 
     setGroups(newGroups);
+    saveGroups(newGroups);
     saveHoldings(newHoldings);
     
     // 切换到第一个分组
@@ -479,12 +558,12 @@ export default function PortfolioHoldings() {
                       record.rating === 'sell' ? '卖出' : '持有';
           
           return (
-            <Space direction="vertical" size="small">
+            <Space direction="" size="small">
               <Tag color={color}>{text}</Tag>
               {record.lastAnalysis && (
-                <div style={{ fontSize: '12px', color: '#666' }}>
+                <span style={{ fontSize: '12px', color: '#666' }}>
                   置信度: {record.lastAnalysis.confidence}%
-                </div>
+                </span>
               )}
             </Space>
           );
@@ -538,20 +617,20 @@ export default function PortfolioHoldings() {
 
   return (
     <div className="p-1">
-      <Card title="" className="mb-4">
+      <Card title="" className="mb-1">
         {/* 分组管理按钮 */}
-        <Row gutter={16} className="mb-4">
+        <Row gutter={1} className="mb-1">
         {/* 分组Tab */}
         <Tabs
           activeKey={selectedGroup}
           onChange={setSelectedGroup}
           type="card"
           size="large"
-          style={{ marginBottom: 16 }}
+          style={{ marginBottom: 1 }}
           tabBarStyle={{ 
             marginBottom: 0,
             background: '#f5f5f5',
-            padding: '8px 16px',
+            padding: '0',
             borderRadius: '6px 6px 0 0'
           }}
         >
@@ -570,7 +649,7 @@ export default function PortfolioHoldings() {
             />
           ))}
         </Tabs>
-          <Col span={4}>
+          <Col span={3}>
             <Button 
               icon={<FolderAddOutlined />}
               onClick={() => setIsAddGroupModalVisible(true)}
@@ -578,7 +657,7 @@ export default function PortfolioHoldings() {
               新建分组
             </Button>
           </Col>
-          <Col span={4}>
+          <Col span={3}>
             <Popconfirm
               title="确定要删除这个分组吗？"
               onConfirm={() => handleDeleteGroup(selectedGroup)}
@@ -594,11 +673,27 @@ export default function PortfolioHoldings() {
               </Button>
             </Popconfirm>
           </Col>
+          <Col span={3}>
+            <Button 
+              icon={<DownloadOutlined />}
+              onClick={handleExportData}
+            >
+              导出数据
+            </Button>
+          </Col>
+          <Col span={3}>
+            <Button 
+              icon={<UploadOutlined />}
+              onClick={() => setIsImportModalVisible(true)}
+            >
+              导入数据
+            </Button>
+          </Col>
         </Row>
 
       
 
-        <Row gutter={16} className="mb-4">
+        <Row gutter={16} className="mb-1">
           <Col span={8}>
             <Input
               placeholder="输入股票代码，如：000001"
@@ -630,7 +725,7 @@ export default function PortfolioHoldings() {
         </Row>
 
         {currentHoldings.length > 0 && (
-          <Row gutter={16} className="mb-4">
+          <Row gutter={16} className="mb-0">
             <Col span={6}>
               <Statistic
                 title="总股票数"
@@ -708,6 +803,41 @@ export default function PortfolioHoldings() {
               value={newGroupDescription}
               onChange={(e) => setNewGroupDescription(e.target.value)}
               rows={3}
+            />
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      {/* 导入数据模态框 */}
+      <Modal
+        title="导入数据"
+        open={isImportModalVisible}
+        onOk={handleImportData}
+        onCancel={() => {
+          setIsImportModalVisible(false);
+          setImportData('');
+        }}
+        okText="导入"
+        cancelText="取消"
+        width={600}
+      >
+        <div style={{ marginBottom: 16 }}>
+          <Alert
+            message="导入说明"
+            description="请粘贴从其他设备导出的JSON数据。导入会合并现有数据，不会覆盖现有分组。"
+            type="info"
+            showIcon
+            style={{ marginBottom: 16 }}
+          />
+        </div>
+        <Form layout="vertical">
+          <Form.Item label="导入数据" required>
+            <TextArea
+              placeholder="请粘贴导出的JSON数据..."
+              value={importData}
+              onChange={(e) => setImportData(e.target.value)}
+              rows={10}
+              style={{ fontFamily: 'monospace' }}
             />
           </Form.Item>
         </Form>
