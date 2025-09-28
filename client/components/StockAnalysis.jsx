@@ -8,6 +8,8 @@ import { DataUtils } from '../utils/dataUtils.js';
 import { STOCK_POOLS } from '../data/stockPools.js';
 import StockChart from './StockChart.jsx';
 import { StockDebug } from '../debug/stockDebug.js';
+import TechnicalScreener from './TechnicalScreener.jsx';
+import SingleStockTest from './SingleStockTest.jsx';
 import {
   selectedCodeAtom,
   klineDataAtom,
@@ -183,7 +185,15 @@ export default function StockAnalysis() {
           </Card>
         </TabPane>
         
-        <TabPane tab="回归分析" key="2">
+        <TabPane tab="单股票测试" key="2">
+          <SingleStockTest />
+        </TabPane>
+        
+        <TabPane tab="技术分析选股" key="3">
+          <TechnicalScreener />
+        </TabPane>
+        
+        <TabPane tab="回归分析" key="4">
           <Card>
             <div className="mb-4">
               <div className="mb-4">
