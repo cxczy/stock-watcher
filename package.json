@@ -1,0 +1,38 @@
+{
+  "name": "example",
+  "type": "module",
+  "scripts": {
+    "dev": "cross-env nodemon --watch controllers index.js",
+    "start:dev": "cross-env NODE_ENV=development node index.js",
+    "start": "cross-env NODE_ENV=production node index.js",
+    "build:dev": "cross-env vite build --mode development",
+    "build": "vite build",
+    "lint": "oxlint",
+    "test": "playwright test --headed && playwright show-report"
+  },
+  "dependencies": {
+    "@ant-design/icons": "^6.0.2",
+    "@ant-design/v5-patch-for-react-19": "^1.0.3",
+    "@fastify/jwt": "^10.0.0",
+    "antd": "^5.27.4",
+    "dayjs": "^1.11.18",
+    "fastify": "^5.6.0",
+    "jotai": "^2.14.0",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1"
+  },
+  "devDependencies": {
+    "@fastify/autoload": "^6.3.1",
+    "@fastify/swagger": "^9.5.1",
+    "@fastify/vite": "^8.2.0",
+    "@playwright/test": "^1.55.0",
+    "@scalar/fastify-api-reference": "^1.35.7",
+    "@tailwindcss/vite": "^4.1.13",
+    "@vitejs/plugin-react": "^5.0.3",
+    "cross-env": "^10.0.0",
+    "nodemon": "^3.1.10",
+    "oxlint": "^1.16.0",
+    "tailwindcss": "^4.1.13",
+    "vite": "^7.1.7"
+  }
+}
