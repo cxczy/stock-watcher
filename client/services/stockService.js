@@ -8,10 +8,12 @@ export class StockService {
     // 6开头：上海主板 (600000, 600036等)
     // 688开头：科创板 (688001, 688002等)
     // 8开头：新三板 (800001, 800002等)
+    // 1开头：ETF (100001, 100002等) - 深圳市场
+    // 5开头：ETF (500001, 500002等) - 上海市场
     
-    if (code.startsWith('0') || code.startsWith('3') || code.startsWith('8')) {
+    if (code.startsWith('0') || code.startsWith('3') || code.startsWith('8') || code.startsWith('1')) {
       return '0'; // 深圳市场
-    } else if (code.startsWith('6')) {
+    } else if (code.startsWith('6') || code.startsWith('5')) {
       return '1'; // 上海市场
     } else {
       // 默认按上海市场处理
@@ -170,6 +172,10 @@ export class StockService {
       return '科创板';
     } else if (code.startsWith('8')) {
       return '新三板';
+    } else if (code.startsWith('1')) {
+      return '深圳ETF';
+    } else if (code.startsWith('5')) {
+      return '上海ETF';
     } else {
       return '未知市场';
     }

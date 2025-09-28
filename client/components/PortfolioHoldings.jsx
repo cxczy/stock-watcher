@@ -319,30 +319,58 @@ export default function PortfolioHoldings() {
         const ma20 = SimpleIndicators.SMA(prices, 20, latestIndex);
         const currentPrice = prices[latestIndex];
         
-        // 计算趋势强度
-        const trendStrength = calculateTrendStrength(prices, 20);
+        // 计算量比
+        const volumeRatio = calculateVolumeRatio(volumes, 5);
         
-        indicators = { ma8, ma20, currentPrice, trendStrength };
+        indicators = { ma8, ma20, currentPrice, volumeRatio };
         
         console.log(`📈 MA8: ${ma8.toFixed(2)}`);
         console.log(`📈 MA20: ${ma20.toFixed(2)}`);
+        console.log(`📊 量比: ${volumeRatio.toFixed(2)}`);
         console.log(`📊 MA8 > MA20: ${ma8 > ma20}`);
         console.log(`📊 MA8 < MA20: ${ma8 < ma20}`);
         
         if (ma8 > ma20) {
           rating = 'buy';
           console.log(`✅ 金叉信号: 买入`);
-          // 计算置信度：基于均线差距、趋势强度和价格位置
-          const maGap = Math.abs(ma8 - ma20) / ma20 * 100;
-          const priceAboveMA = (currentPrice - ma8) / ma8 * 100;
-          confidence = Math.min(95, Math.max(65, 75 + maGap * 1.5 + trendStrength * 10 + priceAboveMA * 0.3));
+          // 计算置信度：基于量比，量比越大置信度越小（缩量买入更可靠）
+          // 量比 < 1.0 时置信度最高，量比 > 2.0 时置信度最低
+          let baseConfidence = 80;
+          if (volumeRatio < 0.8) {
+            // 缩量明显，置信度最高
+            baseConfidence = 90;
+          } else if (volumeRatio < 1.2) {
+            // 量能正常，置信度较高
+            baseConfidence = 85;
+          } else if (volumeRatio < 2.0) {
+            // 放量，置信度降低
+            baseConfidence = 75 - (volumeRatio - 1.2) * 10;
+          } else {
+            // 放量过大，置信度最低
+            baseConfidence = 60;
+          }
+          
+          // 确保置信度在合理范围内
+          confidence = Math.min(95, Math.max(60, baseConfidence));
+          console.log(`📊 买入置信度计算: 量比=${volumeRatio.toFixed(2)}, 基础置信度=${baseConfidence}, 最终置信度=${confidence}`);
         } else if (ma8 < ma20) {
           rating = 'sell';
           console.log(`❌ 死叉信号: 卖出`);
-          // 计算置信度：基于均线差距、趋势强度和价格位置
-          const maGap = Math.abs(ma8 - ma20) / ma20 * 100;
-          const priceBelowMA = (ma8 - currentPrice) / ma8 * 100;
-          confidence = Math.min(95, Math.max(65, 70 + maGap * 1.5 + trendStrength * 10 + priceBelowMA * 0.3));
+          // 卖出信号：基于量比，放量卖出更可靠
+          let baseConfidence = 75;
+          if (volumeRatio > 2.0) {
+            // 放量卖出，置信度较高
+            baseConfidence = 85;
+          } else if (volumeRatio > 1.5) {
+            // 量能较大，置信度中等
+            baseConfidence = 80;
+          } else {
+            // 缩量卖出，置信度较低
+            baseConfidence = 70;
+          }
+          
+          confidence = Math.min(95, Math.max(60, baseConfidence));
+          console.log(`📊 卖出置信度计算: 量比=${volumeRatio.toFixed(2)}, 基础置信度=${baseConfidence}, 最终置信度=${confidence}`);
         } else {
           console.log(`⚖️ 均线重合: 持有`);
         }
@@ -381,6 +409,16 @@ export default function PortfolioHoldings() {
     const trendStrength = Math.abs(priceChange) / (volatility + 1);
     
     return Math.min(1, Math.max(0, trendStrength / 10)); // 归一化到0-1
+  };
+
+  // 计算量比
+  const calculateVolumeRatio = (volumes, period = 5) => {
+    if (volumes.length < period + 1) return 1;
+    
+    const currentVolume = volumes[volumes.length - 1];
+    const avgVolume = volumes.slice(-period - 1, -1).reduce((sum, vol) => sum + vol, 0) / period;
+    
+    return currentVolume / avgVolume;
   };
 
   // 批量分析当前分组
@@ -542,6 +580,33 @@ export default function PortfolioHoldings() {
         )
       }
     ];
+
+    // 根据分组类型添加相应的均线价格列
+    if (selectedGroup === '短线') {
+      baseColumns.push({
+        title: 'MA55(15分钟)',
+        key: 'ma55',
+        width: 120,
+        render: (_, record) => {
+          if (record.lastAnalysis?.indicators?.ma55) {
+            return record.lastAnalysis.indicators.ma55.toFixed(2);
+          }
+          return '-';
+        }
+      });
+    } else if (selectedGroup === '中线') {
+      baseColumns.push({
+        title: 'MA8(日线)',
+        key: 'ma8',
+        width: 120,
+        render: (_, record) => {
+          if (record.lastAnalysis?.indicators?.ma8) {
+            return record.lastAnalysis.indicators.ma8.toFixed(2);
+          }
+          return '-';
+        }
+      });
+    }
 
     // 如果当前分组需要显示买卖评级
     if (groups[selectedGroup]?.showRating) {
