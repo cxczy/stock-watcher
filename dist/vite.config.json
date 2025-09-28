@@ -1,0 +1,14 @@
+{
+  "base": "/",
+  "root": "D:/code/tech/ashare-strategy/client",
+  "build": {
+    "assetsDir": "assets",
+    "outDir": "dist/client"
+  },
+  "fastify": {
+    "outDirs": {
+      "client": "dist/client"
+    },
+    "entryPaths": {}
+  }
+}
