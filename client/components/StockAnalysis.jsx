@@ -10,6 +10,7 @@ import StockChart from './StockChart.jsx';
 import { StockDebug } from '../debug/stockDebug.js';
 import TechnicalScreener from './TechnicalScreener.jsx';
 import SingleStockTest from './SingleStockTest.jsx';
+import PortfolioMonitor from './PortfolioMonitor.jsx';
 import {
   selectedCodeAtom,
   klineDataAtom,
@@ -193,7 +194,11 @@ export default function StockAnalysis() {
           <TechnicalScreener />
         </TabPane>
         
-        <TabPane tab="回归分析" key="4">
+        <TabPane tab="自选股监控" key="4">
+          <PortfolioMonitor />
+        </TabPane>
+        
+        <TabPane tab="回归分析" key="5">
           <Card>
             <div className="mb-4">
               <div className="mb-4">

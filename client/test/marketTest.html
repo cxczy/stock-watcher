@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>股票市场判断测试</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-item { margin: 10px 0; padding: 10px; border: 1px solid #ddd; border-radius: 5px; }
+        .correct { background-color: #d4edda; border-color: #c3e6cb; }
+        .incorrect { background-color: #f8d7da; border-color: #f5c6cb; }
+        .info { font-size: 14px; color: #666; }
+    </style>
+</head>
+<body>
+    <h1>🧪 股票市场判断测试</h1>
+    <p>测试股票代码的市场判断是否正确</p>
+    
+    <div id="test-results"></div>
+    
+    <script type="module">
+        // 模拟StockService的getMarketType和getMarketName方法
+        function getMarketType(code) {
+            if (code.startsWith('0') || code.startsWith('3') || code.startsWith('8')) {
+                return '0'; // 深圳市场
+            } else if (code.startsWith('6')) {
+                return '1'; // 上海市场
+            } else {
+                return '1'; // 默认上海市场
+            }
+        }
+        
+        function getMarketName(code) {
+            if (code.startsWith('000')) {
+                return '深圳主板';
+            } else if (code.startsWith('002')) {
+                return '深圳中小板';
+            } else if (code.startsWith('300')) {
+                return '创业板';
+            } else if (code.startsWith('600') || code.startsWith('601') || code.startsWith('603') || code.startsWith('605')) {
+                return '上海主板';
+            } else if (code.startsWith('688')) {
+                return '科创板';
+            } else if (code.startsWith('8')) {
+                return '新三板';
+            } else {
+                return '未知市场';
+            }
+        }
+        
+        // 测试数据
+        const testStocks = [
+            { code: '000001', expected: '深圳主板' },
+            { code: '000002', expected: '深圳主板' },
+            { code: '002415', expected: '深圳中小板' },
+            { code: '300001', expected: '创业板' },
+            { code: '600000', expected: '上海主板' },
+            { code: '600036', expected: '上海主板' },
+            { code: '600519', expected: '上海主板' },
+            { code: '688001', expected: '科创板' },
+            { code: '800001', expected: '新三板' }
+        ];
+        
+        // 执行测试
+        const resultsDiv = document.getElementById('test-results');
+        let correctCount = 0;
+        let totalCount = testStocks.length;
+        
+        testStocks.forEach(stock => {
+            const marketType = getMarketType(stock.code);
+            const marketName = getMarketName(stock.code);
+            const secid = `${marketType}.${stock.code}`;
+            const isCorrect = marketName === stock.expected;
+            
+            if (isCorrect) correctCount++;
+            
+            const testItem = document.createElement('div');
+            testItem.className = `test-item ${isCorrect ? 'correct' : 'incorrect'}`;
+            testItem.innerHTML = `
+                <h3>股票代码: ${stock.code}</h3>
+                <p><strong>市场类型:</strong> ${marketType} (${marketType === '0' ? '深圳' : '上海'})</p>
+                <p><strong>市场名称:</strong> ${marketName}</p>
+                <p><strong>secid:</strong> ${secid}</p>
+                <p><strong>期望结果:</strong> ${stock.expected}</p>
+                <p><strong>判断结果:</strong> ${isCorrect ? '✅ 正确' : '❌ 错误'}</p>
+            `;
+            resultsDiv.appendChild(testItem);
+        });
+        
+        // 显示总结
+        const summary = document.createElement('div');
+        summary.className = 'test-item';
+        summary.innerHTML = `
+            <h2>📊 测试总结</h2>
+            <p><strong>总测试数:</strong> ${totalCount}</p>
+            <p><strong>正确数:</strong> ${correctCount}</p>
+            <p><strong>错误数:</strong> ${totalCount - correctCount}</p>
+            <p><strong>准确率:</strong> ${(correctCount / totalCount * 100).toFixed(1)}%</p>
+        `;
+        resultsDiv.appendChild(summary);
+    </script>
+</body>
+</html>
