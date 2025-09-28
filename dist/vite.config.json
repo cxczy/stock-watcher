@@ -3,11 +3,11 @@
   "root": "D:/code/tech/ashare-strategy/client",
   "build": {
     "assetsDir": "assets",
-    "outDir": "dist/client"
+    "outDir": "D:\\code\\tech\\ashare-strategy\\dist/client"
   },
   "fastify": {
     "outDirs": {
-      "client": "dist/client"
+      "client": "D:\\code\\tech\\ashare-strategy\\dist/client"
     },
     "entryPaths": {}
   }

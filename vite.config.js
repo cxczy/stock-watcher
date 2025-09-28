@@ -5,8 +5,18 @@ import tailwindcss from "@tailwindcss/vite"
 
 export default {
   root: join(import.meta.dirname, "client"),
+  build: {
+    outDir: join(import.meta.dirname, "dist"),
+    emptyOutDir: true,
+  },
   plugins: [
-    viteFastify({ spa: true, useRelativePaths: false }),
+    viteFastify({ 
+      spa: true, 
+      useRelativePaths: false,
+      dev: {
+        outDir: join(import.meta.dirname, "dist")
+      }
+    }),
     viteReact(),
     tailwindcss(),
   ],
