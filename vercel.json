@@ -3,11 +3,6 @@
   "outputDirectory": "dist",
   "installCommand": "pnpm install",
   "framework": null,
-  "functions": {
-    "dist/index.html": {
-      "runtime": "@vercel/static"
-    }
-  },
   "rewrites": [
     {
       "source": "/(.*)",
