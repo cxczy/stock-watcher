@@ -132,7 +132,7 @@ export default function StockAnalysis() {
   }));
 
   return (
-    <div className="p-6">
+    <div className="p-1">
       <Tabs activeKey={activeTab} onChange={setActiveTab}>
         <TabPane tab="池子筛选" key="1">
           <Card>

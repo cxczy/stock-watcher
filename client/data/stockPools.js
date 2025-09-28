@@ -25,7 +25,16 @@ export const SELF_GROUP_STOCKS = [
 
 // 股票池配置
 export const STOCK_POOLS = {
-  '中证500': ZZ500_STOCKS,
-  '中证1000': ZZ1000_STOCKS,
-  '自选组合': SELF_GROUP_STOCKS
+  '中证500': {
+    name: '中证500',
+    stocks: ZZ500_STOCKS.map(code => ({ code, name: `股票${code}` }))
+  },
+  '中证1000': {
+    name: '中证1000', 
+    stocks: ZZ1000_STOCKS.map(code => ({ code, name: `股票${code}` }))
+  },
+  '自选组合': {
+    name: '自选组合',
+    stocks: SELF_GROUP_STOCKS.map(code => ({ code, name: `股票${code}` }))
+  }
 };

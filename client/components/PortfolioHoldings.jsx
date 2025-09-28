@@ -16,7 +16,8 @@ import {
   Form,
   Popconfirm,
   Tooltip,
-  Alert
+  Alert,
+  Tabs
 } from 'antd';
 import { 
   PlusOutlined, 
@@ -536,22 +537,39 @@ export default function PortfolioHoldings() {
   const currentHoldings = holdings[selectedGroup] || [];
 
   return (
-    <div className="p-6">
-      <Card title="持仓股管理" className="mb-4">
+    <div className="p-1">
+      <Card title="" className="mb-4">
+        {/* 分组管理按钮 */}
         <Row gutter={16} className="mb-4">
-          <Col span={6}>
-            <Select
-              value={selectedGroup}
-              onChange={setSelectedGroup}
-              style={{ width: '100%' }}
-            >
-              {Object.keys(groups).map(groupName => (
-                <Option key={groupName} value={groupName}>
-                  <FolderOutlined /> {groupName}
-                </Option>
-              ))}
-            </Select>
-          </Col>
+        {/* 分组Tab */}
+        <Tabs
+          activeKey={selectedGroup}
+          onChange={setSelectedGroup}
+          type="card"
+          size="large"
+          style={{ marginBottom: 16 }}
+          tabBarStyle={{ 
+            marginBottom: 0,
+            background: '#f5f5f5',
+            padding: '8px 16px',
+            borderRadius: '6px 6px 0 0'
+          }}
+        >
+          {Object.keys(groups).map(groupName => (
+            <Tabs.TabPane 
+              tab={
+                <span>
+                  <FolderOutlined />
+                  <span style={{ marginLeft: 8 }}>{groupName}</span>
+                  <span style={{ marginLeft: 8, color: '#999', fontSize: '12px' }}>
+                    ({holdings[groupName]?.length || 0})
+                  </span>
+                </span>
+              } 
+              key={groupName}
+            />
+          ))}
+        </Tabs>
           <Col span={4}>
             <Button 
               icon={<FolderAddOutlined />}
@@ -577,6 +595,8 @@ export default function PortfolioHoldings() {
             </Popconfirm>
           </Col>
         </Row>
+
+      
 
         <Row gutter={16} className="mb-4">
           <Col span={8}>
@@ -608,14 +628,6 @@ export default function PortfolioHoldings() {
             </Button>
           </Col>
         </Row>
-
-        <Alert
-          message={`当前分组: ${selectedGroup}`}
-          description={groups[selectedGroup]?.description}
-          type="info"
-          showIcon
-          className="mb-4"
-        />
 
         {currentHoldings.length > 0 && (
           <Row gutter={16} className="mb-4">
@@ -655,10 +667,11 @@ export default function PortfolioHoldings() {
         )}
       </Card>
 
-      <Card title={`${selectedGroup} 持仓列表`}>
+      <Card title={``}>
         <Spin spinning={loading}>
           <Table
             columns={getColumns()}
+            size="small"
             dataSource={currentHoldings}
             rowKey="code"
             pagination={{ pageSize: 20 }}

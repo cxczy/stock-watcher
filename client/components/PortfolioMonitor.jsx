@@ -303,7 +303,7 @@ export default function PortfolioMonitor() {
   const recommendationStats = getRecommendationStats();
 
   return (
-    <div className="p-6">
+    <div className="p-1">
       <Card title="自选股监控" className="mb-4">
         <Row gutter={16} className="mb-4">
           <Col span={8}>

@@ -256,7 +256,7 @@ export default function TechnicalScreener() {
   ];
 
   return (
-    <div className="p-6">
+    <div className="p-1">
       <Tabs activeKey={activeTab} onChange={setActiveTab}>
         <TabPane tab="技术分析选股" key="1">
           <Card>
