@@ -35,6 +35,10 @@ async function postBuild() {
     // 处理assets目录
     try {
       if (existsSync(join(clientPath, 'assets'))) {
+        // 如果目标assets目录已存在，先删除
+        if (existsSync(join(distPath, 'assets'))) {
+          await rm(join(distPath, 'assets'), { recursive: true, force: true });
+        }
         await rename(join(clientPath, 'assets'), join(distPath, 'assets'));
         console.log('✅ 移动 assets 目录到根目录');
       }
