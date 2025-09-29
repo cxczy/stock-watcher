@@ -10,7 +10,6 @@ import StockChart from './StockChart.jsx';
 import { StockDebug } from '../debug/stockDebug.js';
 import TechnicalScreener from './TechnicalScreener.jsx';
 import SingleStockTest from './SingleStockTest.jsx';
-import PortfolioMonitor from './PortfolioMonitor.jsx';
 import PortfolioHoldings from './PortfolioHoldings.jsx';
 import {
   selectedCodeAtom,
@@ -134,58 +133,6 @@ export default function StockAnalysis() {
   return (
     <div className="p-1">
       <Tabs activeKey={activeTab} onChange={setActiveTab}>
-        <TabPane tab="池子筛选" key="1">
-          <Card>
-            <div className="mb-4">
-              <Select
-                value={selectedPool}
-                onChange={setSelectedPool}
-                style={{ width: 200, marginRight: 16 }}
-                placeholder="选择股票池"
-              >
-                {Object.keys(STOCK_POOLS).map(pool => (
-                  <Option key={pool} value={pool}>{pool}</Option>
-                ))}
-              </Select>
-              
-              <Select
-                value={selectedCode}
-                onChange={setSelectedCode}
-                style={{ width: 200, marginRight: 16 }}
-                placeholder="选择股票代码"
-                showSearch
-                filterOption={(input, option) =>
-                  option.children.toLowerCase().indexOf(input.toLowerCase()) >= 0
-                }
-              >
-                {STOCK_POOLS[selectedPool]?.map(code => (
-                  <Option key={code} value={code}>{code}</Option>
-                ))}
-              </Select>
-              
-              <Button 
-                type="primary" 
-                onClick={handleGetHistory}
-                loading={loading}
-              >
-                查询历史
-              </Button>
-              
-              <Button 
-                onClick={handleDebugAPI}
-                style={{ marginLeft: 8 }}
-              >
-                调试API
-              </Button>
-            </div>
-            
-            {error && (
-              <div className="text-red-500 mb-4">
-                错误: {error}
-              </div>
-            )}
-          </Card>
-        </TabPane>
         
         <TabPane tab="单股票测试" key="2">
           <SingleStockTest />
@@ -195,9 +142,6 @@ export default function StockAnalysis() {
           <TechnicalScreener />
         </TabPane>
         
-        <TabPane tab="自选股监控" key="4">
-          <PortfolioMonitor />
-        </TabPane>
         
         <TabPane tab="持仓股管理" key="5">
           <PortfolioHoldings />

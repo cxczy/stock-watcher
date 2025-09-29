@@ -20,19 +20,9 @@ export default function Layout() {
 
   const menuItems = [
     {
-      key: '/',
-      icon: <DatabaseOutlined />,
-      label: '池子筛选',
-    },
-    {
       key: '/technical-screener',
       icon: <SearchOutlined />,
       label: '技术分析选股',
-    },
-    {
-      key: '/portfolio-monitor',
-      icon: <MonitorOutlined />,
-      label: '自选股监控',
     },
     {
       key: '/portfolio-holdings',

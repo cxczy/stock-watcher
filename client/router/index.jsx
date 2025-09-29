@@ -1,9 +1,7 @@
 import React from 'react';
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import Layout from '../components/Layout';
-import PoolScreener from '../components/PoolScreener';
 import TechnicalScreener from '../components/TechnicalScreener';
-import PortfolioMonitor from '../components/PortfolioMonitor';
 import PortfolioHoldings from '../components/PortfolioHoldings';
 import BacktestAnalysis from '../components/BacktestAnalysis';
 import ErrorBoundary from '../components/ErrorBoundary';
@@ -17,15 +15,11 @@ const router = createBrowserRouter([
     children: [
       {
         index: true,
-        element: <PoolScreener />
+        element: <TechnicalScreener />
       },
       {
         path: "technical-screener",
         element: <TechnicalScreener />
-      },
-      {
-        path: "portfolio-monitor",
-        element: <PortfolioMonitor />
       },
       {
         path: "portfolio-holdings",
