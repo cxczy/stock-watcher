@@ -34,6 +34,11 @@ export default function Layout() {
       icon: <BarChartOutlined />,
       label: '回归分析',
     },
+    {
+      key: '/stock-analysis',
+      icon: <SearchOutlined />,
+      label: '股票分析',
+    },
   ];
 
   const handleMenuClick = ({ key }) => {
