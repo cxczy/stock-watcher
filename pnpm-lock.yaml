@@ -8,7 +8,9 @@ specifiers:
   '@vitejs/plugin-react': ^5.0.3
   antd: ^5.27.4
   dayjs: ^1.11.18
+  echarts: ^6.0.0
   jotai: ^2.14.0
+  lightweight-charts: ^5.0.8
   oxlint: ^1.16.0
   react: ^19.1.1
   react-dom: ^19.1.1
@@ -21,7 +23,9 @@ dependencies:
   '@ant-design/v5-patch-for-react-19': 1.0.3_f4x47rwinroog735hrqejxqdlu
   antd: 5.27.4_6qpiazawufkd5n22ferrdsggza
   dayjs: 1.11.18
+  echarts: 6.0.0
   jotai: 2.15.0_react@19.1.1
+  lightweight-charts: 5.0.8
   react: 19.1.1
   react-dom: 19.1.1_react@19.1.1
   react-router-dom: 7.9.3_6qpiazawufkd5n22ferrdsggza
@@ -1354,6 +1358,13 @@ packages:
     engines: {node: '>=8'}
     dev: true
 
+  /echarts/6.0.0:
+    resolution: {integrity: sha512-Tte/grDQRiETQP4xz3iZWSvoHrkCQtwqd6hs+mifXcjrCuo2iKWbajFObuLJVBlDIJlOzgQPd1hsaKt/3+OMkQ==}
+    dependencies:
+      tslib: 2.3.0
+      zrender: 6.0.0
+    dev: false
+
   /electron-to-chromium/1.5.227:
     resolution: {integrity: sha512-ITxuoPfJu3lsNWUi2lBM2PaBPYgH3uqmxut5vmBxgYvyI4AlJ6P3Cai1O76mOrkJCBzq0IxWg/NtqOrpu/0gKA==}
     dev: true
@@ -1404,6 +1415,10 @@ packages:
     resolution: {integrity: sha512-WUj2qlxaQtO4g6Pq5c29GTcWGDyd8itL8zTlipgECz3JesAiiOKotd8JU6otB3PACgG6xkJUyVhboMS+bje/jA==}
     engines: {node: '>=6'}
     dev: true
+
+  /fancy-canvas/2.1.0:
+    resolution: {integrity: sha512-nifxXJ95JNLFR2NgRV4/MxVP45G9909wJTEKz5fg/TZS20JJZA6hfgRVh/bC9bwl2zBtBNcYPjiBE4njQHVBwQ==}
+    dev: false
 
   /fdir/6.5.0_picomatch@4.0.3:
     resolution: {integrity: sha512-tIbYtZbucOs0BRGqPJkshJUYdL+SDH7dVM8gjy+ERp3WAUjLEFJE+02kanyHtwjWOnwrKYBiwAmM0p4kLJAnXg==}
@@ -1605,6 +1620,12 @@ packages:
       lightningcss-win32-arm64-msvc: 1.30.1
       lightningcss-win32-x64-msvc: 1.30.1
     dev: true
+
+  /lightweight-charts/5.0.8:
+    resolution: {integrity: sha512-dNBK5TlNcG78RUnxYRAZP4XpY5bkp3EE0PPjFFPkdIZ8RvnvL2JLgTb1BLh40trHhgJl51b1bCz8678GpnKvIw==}
+    dependencies:
+      fancy-canvas: 2.1.0
+    dev: false
 
   /lru-cache/5.1.1:
     resolution: {integrity: sha512-KpNARQA3Iwv+jTA0utUVVbrh+Jlrr1Fv0e56GGzAFOXN7dk/FviaDW8LHmK52DlcH4WP2n6gI8vN1aesBFgo9w==}
@@ -2366,6 +2387,10 @@ packages:
     resolution: {integrity: sha512-BiZS+C1OS8g/q2RRbJmy59xpyghNBqrr6k5L/uKBGRsTfxmu3ffiRnd8mlGPUVayg8pvfi5urfnu8TU7DVOkLQ==}
     dev: false
 
+  /tslib/2.3.0:
+    resolution: {integrity: sha512-N82ooyxVNm6h1riLCoyS9e3fuJ3AMG2zIZs2Gd1ATcSFjSA23Q0fzjjZeh0jbJvWVDZ0cJT8yaNNaaXHzueNjg==}
+    dev: false
+
   /update-browserslist-db/1.1.3_browserslist@4.26.2:
     resolution: {integrity: sha512-UxhIZQ+QInVdunkDAaiazvvT/+fXL5Osr0JZlJulepYu6Jd7qJtDZjlur0emRlT71EN3ScPoE7gvsuIKKNavKw==}
     hasBin: true
@@ -2435,3 +2460,9 @@ packages:
     resolution: {integrity: sha512-YgvUTfwqyc7UXVMrB+SImsVYSmTS8X/tSrtdNZMImM+n7+QTriRXyXim0mBrTXNeqzVF0KWGgHPeiyViFFrNDw==}
     engines: {node: '>=18'}
     dev: true
+
+  /zrender/6.0.0:
+    resolution: {integrity: sha512-41dFXEEXuJpNecuUQq6JlbybmnHaqqpGlbH1yxnA5V9MMP4SbohSVZsJIwz+zdjQXSSlR1Vc34EgH1zxyTDvhg==}
+    dependencies:
+      tslib: 2.3.0
+    dev: false

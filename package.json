@@ -13,7 +13,9 @@
     "@ant-design/v5-patch-for-react-19": "^1.0.3",
     "antd": "^5.27.4",
     "dayjs": "^1.11.18",
+    "echarts": "^6.0.0",
     "jotai": "^2.14.0",
+    "lightweight-charts": "^5.0.8",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "react-router-dom": "^7.9.3"
