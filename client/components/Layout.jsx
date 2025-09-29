@@ -8,7 +8,8 @@ import {
   FolderOutlined,
   BarChartOutlined,
   MenuFoldOutlined,
-  MenuUnfoldOutlined
+  MenuUnfoldOutlined,
+  FundOutlined
 } from '@ant-design/icons';
 
 const { Header, Content, Sider } = AntLayout;
@@ -38,6 +39,11 @@ export default function Layout() {
       key: '/stock-analysis',
       icon: <SearchOutlined />,
       label: '股票分析',
+    },
+    {
+      key: '/portfolio-builder',
+      icon: <FundOutlined />,
+      label: '投资组合构建',
     },
   ];
 

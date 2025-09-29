@@ -5,6 +5,7 @@ import TechnicalScreener from '../components/TechnicalScreener';
 import PortfolioHoldings from '../components/PortfolioHoldings';
 import BacktestAnalysis from '../components/BacktestAnalysis';
 import StockAnalysis from '../components/StockAnalysis';
+import PortfolioBuilder from '../components/PortfolioBuilder';
 import ErrorBoundary from '../components/ErrorBoundary';
 import RouteTest from '../test/routeTest';
 
@@ -33,6 +34,10 @@ const router = createBrowserRouter([
       {
         path: "stock-analysis",
         element: <StockAnalysis />
+      },
+      {
+        path: "portfolio-builder",
+        element: <PortfolioBuilder />
       },
       {
         path: "test",
