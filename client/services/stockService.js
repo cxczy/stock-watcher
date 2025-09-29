@@ -29,13 +29,14 @@ export class StockService {
     
     // 时间周期映射
     const periodMap = {
-      'daily': '101',      // 日线
-      'weekly': '102',     // 周线
-      'monthly': '103',    // 月线
-      '15min': '15',       // 15分钟
-      '30min': '30',       // 30分钟
-      '60min': '60',       // 60分钟
-      '5min': '5'          // 5分钟
+      '1d': '101',         // 日线
+      '1w': '102',        // 周线
+      '1M': '103',        // 月线
+      '15m': '15',        // 15分钟
+      '30m': '30',        // 30分钟
+      '1h': '60',         // 1小时
+      '5m': '5',          // 5分钟
+      '1m': '1'           // 1分钟
     };
     
     const klt = periodMap[period] || '101';
@@ -59,7 +60,7 @@ export class StockService {
       // 尝试直接解析JSON
       const data = JSON.parse(response);
       if (data.rc === 0 && data.data && data.data.klines) {
-        return data.data.klines.map((kline) => {
+        const klines = data.data.klines.map((kline) => {
           const [date, open, close, high, low, volume, amount, , rate] = kline.split(',');
           return {
             date,
@@ -72,6 +73,14 @@ export class StockService {
             rate: parseFloat(rate)
           };
         });
+        
+        // 添加股票名称到每条K线数据中
+        const stockName = data.data.name || data.data.f58 || '未知股票';
+        klines.forEach(kline => {
+          kline.name = stockName;
+        });
+        
+        return klines;
       } else {
         throw new Error('API返回数据格式错误');
       }

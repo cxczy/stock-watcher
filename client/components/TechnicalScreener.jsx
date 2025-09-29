@@ -27,6 +27,7 @@ import { StockService } from '../services/stockService.js';
 import { SimpleIndicators } from '../utils/simpleIndicators.js';
 import { DataUtils } from '../utils/dataUtils.js';
 import { STOCK_POOLS_EXTENDED, STOCK_POOL_INFO } from '../data/stockPoolsExtended.js';
+import { strategyManager } from '../strategies/index.js';
 import {
   selectedCodeAtom,
   klineDataAtom,
@@ -49,11 +50,10 @@ const TEST_STOCK_POOLS = {
 // 活跃ETF股票池
 const ACTIVE_ETF_POOL = {
   '活跃ETF池': [
+    '159928', // 消费
     '159755', // 电池
     '159516', // 半导体设备
-    '515030', // 新能源车
     '516010', // 游戏
-    '512480', // 半导体
     '513010', // 恒生科技
     '159732', // 消费电子
     '159530', // 机器人
@@ -73,374 +73,20 @@ const ALL_STOCK_POOLS = {
 
 // 时间周期配置
 const TIME_PERIODS = {
-  '1分钟': { period: '1m', klineCount: 240 }, // 4小时数据
-  '5分钟': { period: '5m', klineCount: 288 }, // 1天数据
-  '15分钟': { period: '15m', klineCount: 480 }, // 5天数据 (5天 * 24小时 * 4个15分钟 = 480)
-  // '30分钟': { period: '30m', klineCount: 48 }, // 1天数据
-  '1小时': { period: '1h', klineCount: 240 }, // 10天数据 (10天 * 24小时 = 240)
-  '日线': { period: '1d', klineCount: 100 }, // 100天数据
+  '1分钟': { period: '1m', klineCount: 120 }, // 2小时数据
+  '5分钟': { period: '5m', klineCount: 144 }, // 12小时数据
+  '15分钟': { period: '15m', klineCount: 96 }, // 24小时数据
+  '30分钟': { period: '30m', klineCount: 96 }, // 48小时数据
+  '1小时': { period: '1h', klineCount: 48 }, // 48小时数据
+  '日线': { period: '1d', klineCount: 120 }, // 120天数据
   '周线': { period: '1w', klineCount: 52 }, // 1年数据
   '月线': { period: '1M', klineCount: 24 } // 2年数据
 };
 
-// 技术分析工具函数
-const TechnicalUtils = {
-  // 计算价格方差
-  calculateVariance: (prices) => {
-    const mean = prices.reduce((sum, price) => sum + price, 0) / prices.length;
-    const variance = prices.reduce((sum, price) => sum + Math.pow(price - mean, 2), 0) / prices.length;
-    return variance;
-  },
-  
-  // 计算价格标准差
-  calculateStdDev: (prices) => {
-    return Math.sqrt(TechnicalUtils.calculateVariance(prices));
-  },
-  
-  // 计算价格变异系数（标准差/均值）
-  calculateCoefficientOfVariation: (prices) => {
-    const mean = prices.reduce((sum, price) => sum + price, 0) / prices.length;
-    const stdDev = TechnicalUtils.calculateStdDev(prices);
-    return stdDev / mean;
-  },
-  
-  // 计算价格动量（当前价格相对于N期前的变化率）
-  calculateMomentum: (prices, periods) => {
-    if (prices.length < periods + 1) return 0;
-    const currentPrice = prices[prices.length - 1];
-    const pastPrice = prices[prices.length - 1 - periods];
-    return (currentPrice - pastPrice) / pastPrice;
-  },
-  
-  // 计算价格突破强度（突破幅度）
-  calculateBreakoutStrength: (currentPrice, referencePrice) => {
-    return Math.abs(currentPrice - referencePrice) / referencePrice;
-  },
-  
-  // 计算成交量确认度（当前成交量相对于历史平均成交量的比率）
-  calculateVolumeConfirmation: (volumes) => {
-    if (volumes.length < 2) return 1;
-    const currentVolume = volumes[volumes.length - 1];
-    // 使用历史成交量计算平均值，避免未来函数
-    const historicalVolumes = volumes.slice(0, -1);
-    const avgVolume = historicalVolumes.reduce((sum, vol) => sum + vol, 0) / historicalVolumes.length;
-    return currentVolume / avgVolume;
-  },
+// 获取策略定义
+const STRATEGIES = strategyManager.getAll();
 
-  // 趋势识别 - 基于广义趋势理论
-  identifyTrend: (prices, period, currentIndex) => {
-    if (prices.length < period + 1) return 'neutral';
-    
-    const recentPrices = prices.slice(-period);
-    const startPrice = recentPrices[0];
-    const endPrice = recentPrices[recentPrices.length - 1];
-    
-    // 计算价格变化率
-    const priceChange = (endPrice - startPrice) / startPrice;
-    
-    // 计算均线斜率
-    const ma5 = recentPrices.slice(-5).reduce((sum, p) => sum + p, 0) / 5;
-    const ma10 = recentPrices.slice(-10).reduce((sum, p) => sum + p, 0) / 10;
-    const ma20 = recentPrices.reduce((sum, p) => sum + p, 0) / period;
-    
-    // 趋势判断
-    if (priceChange > 0.05 && ma5 > ma10 && ma10 > ma20) {
-      return 'uptrend';
-    } else if (priceChange < -0.05 && ma5 < ma10 && ma10 < ma20) {
-      return 'downtrend';
-    } else {
-      return 'sideways';
-    }
-  },
 
-  // 颈线识别 - 寻找重要的支撑阻力位
-  identifyNeckline: (highs, lows, period, currentIndex) => {
-    if (highs.length < period + 1) return null;
-    
-    const recentHighs = highs.slice(-period);
-    const recentLows = lows.slice(-period);
-    
-    // 寻找重要的高低点
-    const significantHighs = [];
-    const significantLows = [];
-    
-    for (let i = 1; i < recentHighs.length - 1; i++) {
-      // 寻找局部高点
-      if (recentHighs[i] > recentHighs[i-1] && recentHighs[i] > recentHighs[i+1]) {
-        significantHighs.push(recentHighs[i]);
-      }
-      // 寻找局部低点
-      if (recentLows[i] < recentLows[i-1] && recentLows[i] < recentLows[i+1]) {
-        significantLows.push(recentLows[i]);
-      }
-    }
-    
-    // 计算颈线位置（重要高低点的平均值）
-    if (significantHighs.length > 0 && significantLows.length > 0) {
-      const avgHigh = significantHighs.reduce((sum, h) => sum + h, 0) / significantHighs.length;
-      const avgLow = significantLows.reduce((sum, l) => sum + l, 0) / significantLows.length;
-      return (avgHigh + avgLow) / 2;
-    }
-    
-    return null;
-  },
-
-  // 量价分析 - 分析成交量和价格的关系
-  analyzeVolumePrice: (volumes, prices, currentIndex, threshold) => {
-    if (volumes.length < 10) return { isVolumeBreakout: false, volumeRatio: 1 };
-    
-    const currentVolume = volumes[currentIndex];
-    const currentPrice = prices[currentIndex];
-    
-    // 计算近期平均成交量
-    const recentVolumes = volumes.slice(-10, -1);
-    const avgVolume = recentVolumes.reduce((sum, v) => sum + v, 0) / recentVolumes.length;
-    
-    // 计算成交量比率
-    const volumeRatio = currentVolume / avgVolume;
-    
-    // 计算价格变化
-    const priceChange = (currentPrice - prices[currentIndex - 1]) / prices[currentIndex - 1];
-    
-    // 量价分析
-    const isVolumeBreakout = volumeRatio > threshold;
-    const isPriceVolumeMatch = (priceChange > 0 && volumeRatio > 1.2) || (priceChange < 0 && volumeRatio > 1.2);
-    
-    return {
-      isVolumeBreakout,
-      volumeRatio,
-      isPriceVolumeMatch,
-      priceChange
-    };
-  }
-};
-
-// 选股策略定义
-const STRATEGIES = {
-  'trendNeckline': {
-    name: '广义趋势理论',
-    description: '基于趋势识别，颈线突破买卖，量价分析持有',
-    params: {
-      trendPeriod: { type: 'number', default: 20, min: 10, max: 50, label: '趋势识别周期' },
-      necklinePeriod: { type: 'number', default: 10, min: 5, max: 30, label: '颈线识别周期' },
-      volumeThreshold: { type: 'number', default: 1.5, min: 1.0, max: 3.0, label: '放量阈值' }
-    },
-    function: (klineData, params) => {
-      const { trendPeriod, necklinePeriod, volumeThreshold } = params;
-      if (klineData.length < Math.max(trendPeriod, necklinePeriod) + 5) {
-        return { signal: 'neutral', confidence: 0 };
-      }
-
-      const prices = klineData.map(d => d.close);
-      const highs = klineData.map(d => d.high);
-      const lows = klineData.map(d => d.low);
-      const volumes = klineData.map(d => d.volume);
-      const latestIndex = klineData.length - 1;
-
-      // 1. 趋势识别
-      const trend = TechnicalUtils.identifyTrend(prices, trendPeriod, latestIndex);
-      
-      // 2. 颈线识别
-      const neckline = TechnicalUtils.identifyNeckline(highs, lows, necklinePeriod, latestIndex);
-      
-      // 3. 量价分析
-      const volumeAnalysis = TechnicalUtils.analyzeVolumePrice(volumes, prices, latestIndex, volumeThreshold);
-      
-      // 4. 买卖信号判断 - 基于广义趋势理论
-      const currentPrice = prices[latestIndex];
-      const currentVolume = volumes[latestIndex];
-      
-      let signal = 'neutral';
-      let confidence = 0;
-      let details = {};
-
-      // 买入逻辑：上升趋势中回踩颈线附近（左侧或右侧进场）
-      if (trend === 'uptrend' && neckline) {
-        const necklineDistance = Math.abs(currentPrice - neckline) / neckline;
-        const isNearNeckline = necklineDistance <= 0.03; // 颈线附近3%范围内
-        
-        if (isNearNeckline) {
-          // 回踩颈线附近，左侧或右侧进场
-          signal = 'buy';
-          confidence = 0.7 + (volumeAnalysis.volumeRatio - 1) * 0.2;
-          details = {
-            trend: 'uptrend',
-            necklineRetracement: true,
-            necklineDistance: necklineDistance,
-            volumeRatio: volumeAnalysis.volumeRatio,
-            entryType: currentPrice <= neckline ? 'left' : 'right'
-          };
-        }
-      }
-      
-      // 卖出逻辑：放巨量或跌破买入位置3%以上
-      if (trend === 'downtrend' || volumeAnalysis.volumeRatio > 2.0) {
-        // 放巨量卖出（成交量超过2倍）
-        if (volumeAnalysis.volumeRatio > 2.0) {
-          signal = 'sell';
-          confidence = 0.8;
-          details = {
-            trend: trend,
-            hugeVolume: true,
-            volumeRatio: volumeAnalysis.volumeRatio,
-            sellReason: '放巨量'
-          };
-        }
-        // 跌破颈线3%以上卖出
-        else if (neckline && currentPrice < neckline * 0.97) {
-          signal = 'sell';
-          confidence = 0.8;
-          details = {
-            trend: trend,
-            necklineBreakdown: true,
-            breakdownPercent: ((neckline - currentPrice) / neckline * 100).toFixed(2),
-            sellReason: '跌破颈线3%以上'
-          };
-        }
-      }
-
-      return { signal, confidence: Math.min(0.95, confidence), details };
-    }
-  },
-  'newHigh': {
-    name: '创N日新高',
-    description: '收盘价创N个周期新高，基于价格方差和动量计算置信度',
-    params: {
-      periods: { type: 'number', default: 7, min: 1, max: 50, label: '周期数' },
-      minVarianceThreshold: { type: 'number', default: 0.001, min: 0.0001, max: 0.01, label: '最小方差阈值' }
-    },
-    function: (klineData, params) => {
-      const { periods, minVarianceThreshold } = params;
-      if (klineData.length < periods + 1) return { signal: 'neutral', confidence: 0 };
-      
-      const currentPrice = klineData[klineData.length - 1].close;
-      const recentPrices = klineData.slice(-periods - 1, -1).map(d => d.close);
-      const maxRecentHigh = Math.max(...recentPrices);
-      
-      if (currentPrice > maxRecentHigh) {
-        // 计算价格方差（越小说明价格越稳定，突破越有意义）
-        const variance = TechnicalUtils.calculateVariance(recentPrices);
-        const coefficientOfVariation = TechnicalUtils.calculateCoefficientOfVariation(recentPrices);
-        
-        // 计算突破强度
-        const breakoutStrength = TechnicalUtils.calculateBreakoutStrength(currentPrice, maxRecentHigh);
-        
-        // 计算价格动量
-        const momentum = TechnicalUtils.calculateMomentum(
-          klineData.slice(-periods - 1).map(d => d.close), 
-          Math.floor(periods / 2)
-        );
-        
-        // 计算成交量确认（使用历史成交量，避免未来函数）
-        const volumes = klineData.slice(-periods - 1).map(d => d.volume);
-        const volumeConfirmation = TechnicalUtils.calculateVolumeConfirmation(volumes);
-        
-        // 综合置信度计算
-        // 1. 方差越小，置信度越高（价格稳定，突破更有意义）
-        const varianceConfidence = Math.max(0, 1 - coefficientOfVariation * 10);
-        
-        // 2. 突破强度越大，置信度越高
-        const breakoutConfidence = Math.min(1, breakoutStrength * 20);
-        
-        // 3. 动量越大，置信度越高
-        const momentumConfidence = Math.min(1, Math.max(0, momentum * 5));
-        
-        // 4. 成交量确认
-        const volumeConfidence = Math.min(1, volumeConfirmation / 2);
-        
-        // 综合置信度（加权平均）
-        const confidence = (
-          varianceConfidence * 0.4 + 
-          breakoutConfidence * 0.3 + 
-          momentumConfidence * 0.2 + 
-          volumeConfidence * 0.1
-        );
-        
-        return { 
-          signal: 'buy', 
-          confidence: Math.min(0.95, Math.max(0.1, confidence)),
-          details: {
-            variance: variance,
-            coefficientOfVariation: coefficientOfVariation,
-            breakoutStrength: breakoutStrength,
-            momentum: momentum,
-            volumeConfirmation: volumeConfirmation
-          }
-        };
-      }
-      return { signal: 'neutral', confidence: 0 };
-    }
-  },
-  'newLow': {
-    name: '创N日新低',
-    description: '收盘价创N个周期新低，基于价格方差和动量计算置信度',
-    params: {
-      periods: { type: 'number', default: 7, min: 1, max: 50, label: '周期数' },
-      minVarianceThreshold: { type: 'number', default: 0.001, min: 0.0001, max: 0.01, label: '最小方差阈值' }
-    },
-    function: (klineData, params) => {
-      const { periods, minVarianceThreshold } = params;
-      if (klineData.length < periods + 1) return { signal: 'neutral', confidence: 0 };
-      
-      const currentPrice = klineData[klineData.length - 1].close;
-      const recentPrices = klineData.slice(-periods - 1, -1).map(d => d.close);
-      const minRecentLow = Math.min(...recentPrices);
-      
-      if (currentPrice < minRecentLow) {
-        // 计算价格方差（越小说明价格越稳定，突破越有意义）
-        const variance = TechnicalUtils.calculateVariance(recentPrices);
-        const coefficientOfVariation = TechnicalUtils.calculateCoefficientOfVariation(recentPrices);
-        
-        // 计算突破强度
-        const breakoutStrength = TechnicalUtils.calculateBreakoutStrength(currentPrice, minRecentLow);
-        
-        // 计算价格动量（负值表示下跌）
-        const momentum = TechnicalUtils.calculateMomentum(
-          klineData.slice(-periods - 1).map(d => d.close), 
-          Math.floor(periods / 2)
-        );
-        
-        // 计算成交量确认（使用历史成交量，避免未来函数）
-        const volumes = klineData.slice(-periods - 1).map(d => d.volume);
-        const volumeConfirmation = TechnicalUtils.calculateVolumeConfirmation(volumes);
-        
-        // 综合置信度计算
-        // 1. 方差越小，置信度越高（价格稳定，突破更有意义）
-        const varianceConfidence = Math.max(0, 1 - coefficientOfVariation * 10);
-        
-        // 2. 突破强度越大，置信度越高
-        const breakoutConfidence = Math.min(1, breakoutStrength * 20);
-        
-        // 3. 负动量越大，置信度越高（下跌趋势确认）
-        const momentumConfidence = Math.min(1, Math.max(0, -momentum * 5));
-        
-        // 4. 成交量确认
-        const volumeConfidence = Math.min(1, volumeConfirmation / 2);
-        
-        // 综合置信度（加权平均）
-        const confidence = (
-          varianceConfidence * 0.4 + 
-          breakoutConfidence * 0.3 + 
-          momentumConfidence * 0.2 + 
-          volumeConfirmation * 0.1
-        );
-        
-        return { 
-          signal: 'sell', 
-          confidence: Math.min(0.95, Math.max(0.1, confidence)),
-          details: {
-            variance: variance,
-            coefficientOfVariation: coefficientOfVariation,
-            breakoutStrength: breakoutStrength,
-            momentum: momentum,
-            volumeConfirmation: volumeConfirmation
-          }
-        };
-      }
-      return { signal: 'neutral', confidence: 0 };
-    }
-  }
-};
 
 export default function TechnicalScreener() {
   const [currentStep, setCurrentStep] = useState(0);
@@ -495,7 +141,7 @@ export default function TechnicalScreener() {
               setTimeout(() => reject(new Error('请求超时')), 10000)
             );
             
-          const dataPromise = StockService.getKlineData(stockCode, timeConfig.klineCount);
+          const dataPromise = StockService.getKlineData(stockCode, timeConfig.klineCount, timeConfig.period);
             const klineData = await Promise.race([dataPromise, timeoutPromise]);
             
           if (klineData.length < strategyParams.periods + 1) {
@@ -510,9 +156,13 @@ export default function TechnicalScreener() {
           
           if (strategyResult.signal !== 'neutral') {
             const latestData = klineData[klineData.length - 1];
+            
+            // 从K线数据中获取股票名称
+            const stockName = latestData.name || `股票${stockCode}`;
+            
             results.push({
                 code: stockCode,
-                name: `股票${stockCode}`,
+                name: stockName,
               price: latestData.close,
               change: latestData.rate,
               volume: latestData.volume,
@@ -571,7 +221,7 @@ export default function TechnicalScreener() {
       const timeConfig = TIME_PERIODS[timePeriod];
       const backtestKlineCount = Math.min(200, timeConfig.klineCount * 2); // 获取更多数据
       
-      const klineData = await StockService.getKlineData(stockCode, backtestKlineCount);
+      const klineData = await StockService.getKlineData(stockCode, backtestKlineCount, timeConfig.period);
       
       if (klineData.length < strategyParams.periods + 10) {
         message.warning(`股票 ${stockCode} 历史数据不足，无法进行回测`);
@@ -999,7 +649,7 @@ export default function TechnicalScreener() {
                   <li><strong>持有条件</strong>：量价配合良好，趋势未改变</li>
                 </ul>
               </div>
-              
+
               <div>
                 <h4>创N日新高策略</h4>
                 <p>当股票收盘价创出N个周期内的新高时，产生买入信号</p>
@@ -1168,6 +818,7 @@ export default function TechnicalScreener() {
                 klineData={selectedBacktestResult.klineData}
                 backtestResults={selectedBacktestResult.results}
                 stockCode={selectedBacktestResult.stockCode}
+                strategyName={selectedStrategy}
               />
             </Card>
 

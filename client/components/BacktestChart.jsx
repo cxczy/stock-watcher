@@ -2,11 +2,28 @@ import React, { useRef, useState } from 'react';
 import * as echarts from 'echarts';
 import { Button } from 'antd';
 
-export default function BacktestChart({ klineData, backtestResults, stockCode }) {
+export default function BacktestChart({ klineData, backtestResults, stockCode, strategyName }) {
   const chartContainerRef = useRef();
   const chartRef = useRef();
   const [isLoading, setIsLoading] = useState(false);
   const [chartLoaded, setChartLoaded] = useState(false);
+
+  // 计算移动平均线
+  const calculateMA = (data, period) => {
+    const ma = [];
+    for (let i = 0; i < data.length; i++) {
+      if (i < period - 1) {
+        ma.push(null);
+      } else {
+        let sum = 0;
+        for (let j = i - period + 1; j <= i; j++) {
+          sum += data[j].close;
+        }
+        ma.push(sum / period);
+      }
+    }
+    return ma;
+  };
 
   // 缠论一笔算法 - 宽松的一笔定义，4根K线也可以成笔
   const calculateZigZag = (data, minPercent = 0.02) => {
@@ -225,6 +242,20 @@ export default function BacktestChart({ klineData, backtestResults, stockCode })
       
       console.log('处理后的数据:', { dates: dates.slice(0, 3), ohlcData: ohlcData.slice(0, 3) });
 
+      // 计算双均线（如果是双均线策略）
+      let ma34Data = [];
+      let ma55Data = [];
+      let isDualMAStrategy = strategyName === 'dualMA' || 
+                           (backtestResults.length > 0 && backtestResults[0].details && backtestResults[0].details.strategy === 'dual_ma');
+      
+      if (isDualMAStrategy) {
+        console.log('检测到双均线策略，计算MA34和MA55');
+        ma34Data = calculateMA(klineData, 34);
+        ma55Data = calculateMA(klineData, 55);
+        console.log('MA34数据:', ma34Data.slice(-5));
+        console.log('MA55数据:', ma55Data.slice(-5));
+      }
+
       // 准备买卖点数据
       const buyPoints = [];
       const sellPoints = [];
@@ -314,7 +345,9 @@ export default function BacktestChart({ klineData, backtestResults, stockCode })
           }
         },
         legend: {
-          data: ['K线', '成交量', '缠论一笔', '支撑线', '阻力线', '买入点(b)', '卖出点(s)', '做T点(t)'],
+          data: isDualMAStrategy 
+            ? ['K线', '成交量', 'MA34', 'MA55', '缠论一笔', '支撑线', '阻力线', '买入点(b)', '卖出点(s)', '做T点(t)']
+            : ['K线', '成交量', '缠论一笔', '支撑线', '阻力线', '买入点(b)', '卖出点(s)', '做T点(t)'],
           top: 30
         },
         grid: [
@@ -414,6 +447,31 @@ export default function BacktestChart({ klineData, backtestResults, stockCode })
               }
             }
           },
+          // 双均线系列（仅双均线策略显示）
+          ...(isDualMAStrategy ? [
+            {
+              name: 'MA34',
+              type: 'line',
+              data: ma34Data,
+              lineStyle: {
+                color: '#ff9800',
+                width: 2
+              },
+              symbol: 'none',
+              smooth: true
+            },
+            {
+              name: 'MA55',
+              type: 'line',
+              data: ma55Data,
+              lineStyle: {
+                color: '#9c27b0',
+                width: 2
+              },
+              symbol: 'none',
+              smooth: true
+            }
+          ] : []),
           {
             name: '缠论一笔',
             type: 'line',
