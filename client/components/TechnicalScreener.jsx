@@ -46,13 +46,38 @@ const TEST_STOCK_POOLS = {
   '测试池3': ['300502', '600276', '002415']
 };
 
+// 活跃ETF股票池
+const ACTIVE_ETF_POOL = {
+  '活跃ETF池': [
+    '159755', // 电池
+    '159516', // 半导体设备
+    '515030', // 新能源车
+    '516010', // 游戏
+    '512480', // 半导体
+    '513010', // 恒生科技
+    '159732', // 消费电子
+    '159530', // 机器人
+    '518880', // 黄金
+    '159707', // 地产
+    '512400', // 有色
+    '588030', // 科创100基金
+    '515880'  // 通信
+  ]
+};
+
+// 合并所有股票池
+const ALL_STOCK_POOLS = {
+  ...TEST_STOCK_POOLS,
+  ...ACTIVE_ETF_POOL
+};
+
 // 时间周期配置
 const TIME_PERIODS = {
   '1分钟': { period: '1m', klineCount: 240 }, // 4小时数据
   '5分钟': { period: '5m', klineCount: 288 }, // 1天数据
-  '15分钟': { period: '15m', klineCount: 96 }, // 1天数据
-  '30分钟': { period: '30m', klineCount: 48 }, // 1天数据
-  '1小时': { period: '1h', klineCount: 24 }, // 1天数据
+  '15分钟': { period: '15m', klineCount: 480 }, // 5天数据 (5天 * 24小时 * 4个15分钟 = 480)
+  // '30分钟': { period: '30m', klineCount: 48 }, // 1天数据
+  '1小时': { period: '1h', klineCount: 240 }, // 10天数据 (10天 * 24小时 = 240)
   '日线': { period: '1d', klineCount: 100 }, // 100天数据
   '周线': { period: '1w', klineCount: 52 }, // 1年数据
   '月线': { period: '1M', klineCount: 24 } // 2年数据
@@ -100,11 +125,183 @@ const TechnicalUtils = {
     const historicalVolumes = volumes.slice(0, -1);
     const avgVolume = historicalVolumes.reduce((sum, vol) => sum + vol, 0) / historicalVolumes.length;
     return currentVolume / avgVolume;
+  },
+
+  // 趋势识别 - 基于广义趋势理论
+  identifyTrend: (prices, period, currentIndex) => {
+    if (prices.length < period + 1) return 'neutral';
+    
+    const recentPrices = prices.slice(-period);
+    const startPrice = recentPrices[0];
+    const endPrice = recentPrices[recentPrices.length - 1];
+    
+    // 计算价格变化率
+    const priceChange = (endPrice - startPrice) / startPrice;
+    
+    // 计算均线斜率
+    const ma5 = recentPrices.slice(-5).reduce((sum, p) => sum + p, 0) / 5;
+    const ma10 = recentPrices.slice(-10).reduce((sum, p) => sum + p, 0) / 10;
+    const ma20 = recentPrices.reduce((sum, p) => sum + p, 0) / period;
+    
+    // 趋势判断
+    if (priceChange > 0.05 && ma5 > ma10 && ma10 > ma20) {
+      return 'uptrend';
+    } else if (priceChange < -0.05 && ma5 < ma10 && ma10 < ma20) {
+      return 'downtrend';
+    } else {
+      return 'sideways';
+    }
+  },
+
+  // 颈线识别 - 寻找重要的支撑阻力位
+  identifyNeckline: (highs, lows, period, currentIndex) => {
+    if (highs.length < period + 1) return null;
+    
+    const recentHighs = highs.slice(-period);
+    const recentLows = lows.slice(-period);
+    
+    // 寻找重要的高低点
+    const significantHighs = [];
+    const significantLows = [];
+    
+    for (let i = 1; i < recentHighs.length - 1; i++) {
+      // 寻找局部高点
+      if (recentHighs[i] > recentHighs[i-1] && recentHighs[i] > recentHighs[i+1]) {
+        significantHighs.push(recentHighs[i]);
+      }
+      // 寻找局部低点
+      if (recentLows[i] < recentLows[i-1] && recentLows[i] < recentLows[i+1]) {
+        significantLows.push(recentLows[i]);
+      }
+    }
+    
+    // 计算颈线位置（重要高低点的平均值）
+    if (significantHighs.length > 0 && significantLows.length > 0) {
+      const avgHigh = significantHighs.reduce((sum, h) => sum + h, 0) / significantHighs.length;
+      const avgLow = significantLows.reduce((sum, l) => sum + l, 0) / significantLows.length;
+      return (avgHigh + avgLow) / 2;
+    }
+    
+    return null;
+  },
+
+  // 量价分析 - 分析成交量和价格的关系
+  analyzeVolumePrice: (volumes, prices, currentIndex, threshold) => {
+    if (volumes.length < 10) return { isVolumeBreakout: false, volumeRatio: 1 };
+    
+    const currentVolume = volumes[currentIndex];
+    const currentPrice = prices[currentIndex];
+    
+    // 计算近期平均成交量
+    const recentVolumes = volumes.slice(-10, -1);
+    const avgVolume = recentVolumes.reduce((sum, v) => sum + v, 0) / recentVolumes.length;
+    
+    // 计算成交量比率
+    const volumeRatio = currentVolume / avgVolume;
+    
+    // 计算价格变化
+    const priceChange = (currentPrice - prices[currentIndex - 1]) / prices[currentIndex - 1];
+    
+    // 量价分析
+    const isVolumeBreakout = volumeRatio > threshold;
+    const isPriceVolumeMatch = (priceChange > 0 && volumeRatio > 1.2) || (priceChange < 0 && volumeRatio > 1.2);
+    
+    return {
+      isVolumeBreakout,
+      volumeRatio,
+      isPriceVolumeMatch,
+      priceChange
+    };
   }
 };
 
 // 选股策略定义
 const STRATEGIES = {
+  'trendNeckline': {
+    name: '广义趋势理论',
+    description: '基于趋势识别，颈线突破买卖，量价分析持有',
+    params: {
+      trendPeriod: { type: 'number', default: 20, min: 10, max: 50, label: '趋势识别周期' },
+      necklinePeriod: { type: 'number', default: 10, min: 5, max: 30, label: '颈线识别周期' },
+      volumeThreshold: { type: 'number', default: 1.5, min: 1.0, max: 3.0, label: '放量阈值' }
+    },
+    function: (klineData, params) => {
+      const { trendPeriod, necklinePeriod, volumeThreshold } = params;
+      if (klineData.length < Math.max(trendPeriod, necklinePeriod) + 5) {
+        return { signal: 'neutral', confidence: 0 };
+      }
+
+      const prices = klineData.map(d => d.close);
+      const highs = klineData.map(d => d.high);
+      const lows = klineData.map(d => d.low);
+      const volumes = klineData.map(d => d.volume);
+      const latestIndex = klineData.length - 1;
+
+      // 1. 趋势识别
+      const trend = TechnicalUtils.identifyTrend(prices, trendPeriod, latestIndex);
+      
+      // 2. 颈线识别
+      const neckline = TechnicalUtils.identifyNeckline(highs, lows, necklinePeriod, latestIndex);
+      
+      // 3. 量价分析
+      const volumeAnalysis = TechnicalUtils.analyzeVolumePrice(volumes, prices, latestIndex, volumeThreshold);
+      
+      // 4. 买卖信号判断 - 基于广义趋势理论
+      const currentPrice = prices[latestIndex];
+      const currentVolume = volumes[latestIndex];
+      
+      let signal = 'neutral';
+      let confidence = 0;
+      let details = {};
+
+      // 买入逻辑：上升趋势中回踩颈线附近（左侧或右侧进场）
+      if (trend === 'uptrend' && neckline) {
+        const necklineDistance = Math.abs(currentPrice - neckline) / neckline;
+        const isNearNeckline = necklineDistance <= 0.03; // 颈线附近3%范围内
+        
+        if (isNearNeckline) {
+          // 回踩颈线附近，左侧或右侧进场
+          signal = 'buy';
+          confidence = 0.7 + (volumeAnalysis.volumeRatio - 1) * 0.2;
+          details = {
+            trend: 'uptrend',
+            necklineRetracement: true,
+            necklineDistance: necklineDistance,
+            volumeRatio: volumeAnalysis.volumeRatio,
+            entryType: currentPrice <= neckline ? 'left' : 'right'
+          };
+        }
+      }
+      
+      // 卖出逻辑：放巨量或跌破买入位置3%以上
+      if (trend === 'downtrend' || volumeAnalysis.volumeRatio > 2.0) {
+        // 放巨量卖出（成交量超过2倍）
+        if (volumeAnalysis.volumeRatio > 2.0) {
+          signal = 'sell';
+          confidence = 0.8;
+          details = {
+            trend: trend,
+            hugeVolume: true,
+            volumeRatio: volumeAnalysis.volumeRatio,
+            sellReason: '放巨量'
+          };
+        }
+        // 跌破颈线3%以上卖出
+        else if (neckline && currentPrice < neckline * 0.97) {
+          signal = 'sell';
+          confidence = 0.8;
+          details = {
+            trend: trend,
+            necklineBreakdown: true,
+            breakdownPercent: ((neckline - currentPrice) / neckline * 100).toFixed(2),
+            sellReason: '跌破颈线3%以上'
+          };
+        }
+      }
+
+      return { signal, confidence: Math.min(0.95, confidence), details };
+    }
+  },
   'newHigh': {
     name: '创N日新高',
     description: '收盘价创N个周期新高，基于价格方差和动量计算置信度',
@@ -254,14 +451,18 @@ export default function TechnicalScreener() {
   const [activeTab, setActiveTab] = useState('1');
 
   // 第一步：股票池选择
-  const [selectedPool, setSelectedPool] = useState('测试池1');
+  const [selectedPool, setSelectedPool] = useState('活跃ETF池');
   
   // 第二步：时间周期选择
   const [selectedTimePeriod, setSelectedTimePeriod] = useState('日线');
   
   // 第三步：选股策略选择
-  const [selectedStrategy, setSelectedStrategy] = useState('newHigh');
-  const [strategyParams, setStrategyParams] = useState({ periods: 7 });
+  const [selectedStrategy, setSelectedStrategy] = useState('trendNeckline');
+  const [strategyParams, setStrategyParams] = useState({ 
+    trendPeriod: 20, 
+    necklinePeriod: 10, 
+    volumeThreshold: 1.5 
+  });
 
   // 执行技术分析筛选
   const handleScreening = async () => {
@@ -275,7 +476,7 @@ export default function TechnicalScreener() {
     setScreeningResults([]);
     setScreeningProgress(0);
 
-    const stocks = TEST_STOCK_POOLS[selectedPool];
+    const stocks = ALL_STOCK_POOLS[selectedPool];
     const timeConfig = TIME_PERIODS[selectedTimePeriod];
     const strategy = STRATEGIES[selectedStrategy];
     const results = [];
@@ -575,20 +776,24 @@ export default function TechnicalScreener() {
       case 0:
         return (
           <Card title="第一步：选择股票池" className="mb-4">
-            <div className="space-y-4">
-              <p>请选择要筛选的股票池：</p>
+              <div className="space-y-4">
+                <p>请选择要筛选的股票池：</p>
+                <div className="text-sm text-gray-600">
+                  <p><strong>活跃ETF池</strong>：包含13只活跃的ETF基金，适合回测和实盘交易</p>
+                  <p><strong>测试池</strong>：用于功能测试的小规模股票池</p>
+                </div>
               <Radio.Group 
                 value={selectedPool} 
                 onChange={(e) => setSelectedPool(e.target.value)}
                 className="w-full"
               >
                 <div className="grid grid-cols-1 gap-4">
-                  {Object.keys(TEST_STOCK_POOLS).map(pool => (
+                  {Object.keys(ALL_STOCK_POOLS).map(pool => (
                     <Radio key={pool} value={pool} className="block">
                       <div>
                         <div className="font-medium">{pool}</div>
                         <div className="text-sm text-gray-500">
-                          {TEST_STOCK_POOLS[pool].length}只股票: {TEST_STOCK_POOLS[pool].join(', ')}
+                          {ALL_STOCK_POOLS[pool].length}只股票: {ALL_STOCK_POOLS[pool].join(', ')}
                         </div>
                       </div>
                     </Radio>
@@ -771,6 +976,29 @@ export default function TechnicalScreener() {
           <Card>
             <div className="space-y-4">
               <h3>选股策略说明</h3>
+              
+              <div>
+                <h4>广义趋势理论策略</h4>
+                <p>基于顶底之王的广义趋势理论，结合趋势识别、颈线突破和量价分析</p>
+                <p>参数：趋势识别周期(20天)、颈线识别周期(10天)、放量阈值(1.5倍)</p>
+                <p>适用场景：ETF交易，中长线趋势跟踪</p>
+                
+                <h5 className="mt-3">策略核心逻辑：</h5>
+                <ul className="list-disc list-inside ml-4 text-sm">
+                  <li><strong>趋势识别</strong>：通过多周期均线排列判断主趋势方向</li>
+                  <li><strong>颈线识别</strong>：寻找重要的支撑阻力位作为买卖点</li>
+                  <li><strong>量价分析</strong>：成交量确认突破的有效性</li>
+                  <li><strong>持有依据</strong>：基于量价关系判断是否继续持有</li>
+                </ul>
+                
+                <h5 className="mt-3">买卖信号：</h5>
+                <ul className="list-disc list-inside ml-4 text-sm">
+                  <li><strong>买入信号</strong>：上升趋势中回踩颈线附近（左侧或右侧进场）</li>
+                  <li><strong>卖出信号</strong>：放巨量（成交量&gt;2倍）或跌破颈线3%以上</li>
+                  <li><strong>止损优势</strong>：颈线附近进场，止损距离小，胜率高</li>
+                  <li><strong>持有条件</strong>：量价配合良好，趋势未改变</li>
+                </ul>
+              </div>
               
               <div>
                 <h4>创N日新高策略</h4>
