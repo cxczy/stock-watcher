@@ -9,7 +9,8 @@ import {
   BarChartOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
-  FundOutlined
+  FundOutlined,
+  LineChartOutlined
 } from '@ant-design/icons';
 
 const { Header, Content, Sider } = AntLayout;
@@ -44,6 +45,11 @@ export default function Layout() {
       key: '/portfolio-builder',
       icon: <FundOutlined />,
       label: '投资组合构建',
+    },
+    {
+      key: '/wyckoff-analysis',
+      icon: <LineChartOutlined />,
+      label: '威科夫分析',
     },
   ];
 

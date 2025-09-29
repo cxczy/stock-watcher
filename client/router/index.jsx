@@ -6,6 +6,7 @@ import PortfolioHoldings from '../components/PortfolioHoldings';
 import BacktestAnalysis from '../components/BacktestAnalysis';
 import StockAnalysis from '../components/StockAnalysis';
 import PortfolioBuilder from '../components/PortfolioBuilder';
+import WyckoffAnalysis from '../components/WyckoffAnalysis';
 import ErrorBoundary from '../components/ErrorBoundary';
 import RouteTest from '../test/routeTest';
 
@@ -38,6 +39,10 @@ const router = createBrowserRouter([
       {
         path: "portfolio-builder",
         element: <PortfolioBuilder />
+      },
+      {
+        path: "wyckoff-analysis",
+        element: <WyckoffAnalysis />
       },
       {
         path: "test",
