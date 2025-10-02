@@ -7,6 +7,7 @@ import BacktestAnalysis from '../components/BacktestAnalysis';
 import StockAnalysis from '../components/StockAnalysis';
 import PortfolioBuilder from '../components/PortfolioBuilder';
 import WyckoffAnalysis from '../components/WyckoffAnalysis';
+import CycleAnalysis from '../components/CycleAnalysis';
 import ErrorBoundary from '../components/ErrorBoundary';
 import RouteTest from '../test/routeTest';
 
@@ -43,6 +44,10 @@ const router = createBrowserRouter([
       {
         path: "wyckoff-analysis",
         element: <WyckoffAnalysis />
+      },
+      {
+        path: "cycle-analysis",
+        element: <CycleAnalysis />
       },
       {
         path: "test",

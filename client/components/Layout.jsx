@@ -10,7 +10,8 @@ import {
   MenuFoldOutlined,
   MenuUnfoldOutlined,
   FundOutlined,
-  LineChartOutlined
+  LineChartOutlined,
+  ClockCircleOutlined
 } from '@ant-design/icons';
 
 const { Header, Content, Sider } = AntLayout;
@@ -50,6 +51,11 @@ export default function Layout() {
       key: '/wyckoff-analysis',
       icon: <LineChartOutlined />,
       label: '威科夫分析',
+    },
+    {
+      key: '/cycle-analysis',
+      icon: <ClockCircleOutlined />,
+      label: '市场周期分析',
     },
   ];
 
