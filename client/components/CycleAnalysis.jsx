@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Card, Row, Col, Spin, Alert, Tabs, Select, Button, Statistic, Progress, Tag } from 'antd';
-import * as echarts from 'echarts';
+import { CombinedChart } from './Charts';
 import { StockService } from '../services/stockService';
 import { 
   RiseOutlined, 
@@ -32,11 +32,17 @@ const JUGLAR_ETFS = [
   { code: '588030', name: '科创100ETF', category: '科技创新' }
 ];
 
+// 美元周期相关配置 - 美元指数
+const DOLLAR_ETFS = [
+  { code: 'UDI', name: '美元指数', category: '美元周期' }
+];
+
 export default function CycleAnalysis() {
   const [loading, setLoading] = useState(false);
   const [kitchenData, setKitchenData] = useState({});
   const [juglarData, setJuglarData] = useState({});
-  const [selectedPeriod, setSelectedPeriod] = useState('1M'); // 默认月线
+  const [dollarData, setDollarData] = useState({});
+  const [selectedPeriod, setSelectedPeriod] = useState('1Q'); // 默认季线
   const [cyclePosition, setCyclePosition] = useState({});
 
   // 获取ETF数据
@@ -44,8 +50,8 @@ export default function CycleAnalysis() {
     const data = {};
     for (const etf of etfs) {
       try {
-        // 月线数据加载60根（5年），周线数据加载120根（约2.3年）
-        const dataCount = period === '1M' ? 60 : 120;
+        // 季线数据加载60根（15年），月线数据加载60根（5年），周线数据加载120根（约2.3年）
+        const dataCount = period === '1Q' ? 60 : period === '1M' ? 60 : 120;
         const klineData = await StockService.getKlineData(etf.code, dataCount, period);
         data[etf.code] = {
           ...etf,
@@ -168,6 +174,41 @@ export default function CycleAnalysis() {
         position = 'consolidation';
         confidence = 65;
         signals.push('设备投资观望期');
+      }
+    }
+
+    // 美元周期信号判断
+    if (category.includes('美元周期')) {
+      // 美元强弱信号：长期趋势 + 技术指标确认
+      const longTermTrend = analyzeLongTermTrend(prices);
+      if (longTermTrend === 'breakout' && trend === 'uptrend' && macdSignal === 'bullish' && bollPosition === 'overbought') {
+        position = 'recovery';
+        confidence = 95;
+        signals.push('美元走强周期启动', '长期突破确认', 'MACD金叉确认', '布林带突破上轨');
+      } else if (longTermTrend === 'breakout' && trend === 'uptrend' && macdSignal === 'bullish') {
+        position = 'recovery';
+        confidence = 88;
+        signals.push('美元走强周期启动', '长期突破确认', 'MACD金叉确认');
+      } else if (longTermTrend === 'breakout' && trend === 'uptrend') {
+        position = 'recovery';
+        confidence = 82;
+        signals.push('美元走强周期启动', '长期突破确认');
+      } else if (longTermTrend === 'decline' && trend === 'downtrend' && macdSignal === 'bearish' && bollPosition === 'oversold') {
+        position = 'decline';
+        confidence = 90;
+        signals.push('美元走弱周期', '长期下跌确认', 'MACD死叉确认', '布林带跌破下轨');
+      } else if (longTermTrend === 'decline' && trend === 'downtrend') {
+        position = 'decline';
+        confidence = 80;
+        signals.push('美元走弱周期', '长期下跌确认');
+      } else if (trend === 'sideways') {
+        position = 'consolidation';
+        confidence = 70;
+        signals.push('美元震荡整理');
+      } else {
+        position = 'consolidation';
+        confidence = 60;
+        signals.push('美元周期观望期');
       }
     }
 
@@ -407,16 +448,18 @@ export default function CycleAnalysis() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [kitchen, juglar] = await Promise.all([
+      const [kitchen, juglar, dollar] = await Promise.all([
         fetchETFData(KITCHIN_ETFS, selectedPeriod),
-        fetchETFData(JUGLAR_ETFS, selectedPeriod)
+        fetchETFData(JUGLAR_ETFS, selectedPeriod),
+        fetchETFData(DOLLAR_ETFS, selectedPeriod)
       ]);
       
       setKitchenData(kitchen);
       setJuglarData(juglar);
+      setDollarData(dollar);
       
       // 综合分析周期位置
-      analyzeOverallCyclePosition(kitchen, juglar);
+      analyzeOverallCyclePosition(kitchen, juglar, dollar);
     } catch (error) {
       console.error('加载数据失败:', error);
     } finally {
@@ -425,25 +468,36 @@ export default function CycleAnalysis() {
   };
 
   // 综合分析周期位置
-  const analyzeOverallCyclePosition = (kitchen, juglar) => {
+  const analyzeOverallCyclePosition = (kitchen, juglar, dollar) => {
     const kitchenPositions = Object.values(kitchen).filter(item => item.analysis.status === 'success');
     const juglarPositions = Object.values(juglar).filter(item => item.analysis.status === 'success');
+    const dollarPositions = Object.values(dollar).filter(item => item.analysis.status === 'success');
     
     const kitchenRecovery = kitchenPositions.filter(item => item.analysis.position === 'recovery').length;
     const juglarRecovery = juglarPositions.filter(item => item.analysis.position === 'recovery').length;
+    const dollarRecovery = dollarPositions.filter(item => item.analysis.position === 'recovery').length;
     
     let overallPosition = 'unknown';
     let description = '';
     
-    if (kitchenRecovery >= 2 && juglarRecovery >= 2) {
+    if (kitchenRecovery >= 2 && juglarRecovery >= 2 && dollarRecovery >= 1) {
       overallPosition = 'recovery';
-      description = '基钦周期和朱格拉周期均显示复苏迹象，市场可能进入新一轮上升周期';
+      description = '基钦周期、朱格拉周期和美元周期均显示复苏迹象，市场可能进入新一轮上升周期';
+    } else if (kitchenRecovery >= 2 && dollarRecovery >= 1) {
+      overallPosition = 'kitchen_dollar_recovery';
+      description = '基钦周期和美元周期显示复苏迹象，补库存需求和美元走强可能启动';
+    } else if (juglarRecovery >= 2 && dollarRecovery >= 1) {
+      overallPosition = 'juglar_dollar_recovery';
+      description = '朱格拉周期和美元周期显示复苏迹象，企业资本开支意愿回升且美元走强';
     } else if (kitchenRecovery >= 2) {
       overallPosition = 'kitchen_recovery';
       description = '基钦周期显示复苏迹象，补库存需求可能启动';
     } else if (juglarRecovery >= 2) {
       overallPosition = 'juglar_recovery';
       description = '朱格拉周期显示复苏迹象，企业资本开支意愿回升';
+    } else if (dollarRecovery >= 1) {
+      overallPosition = 'dollar_recovery';
+      description = '美元周期显示复苏迹象，美元走强可能影响全球市场';
     } else {
       overallPosition = 'consolidation';
       description = '各周期板块仍处于盘整状态，需继续观察';
@@ -454,8 +508,10 @@ export default function CycleAnalysis() {
       description,
       kitchenRecovery,
       juglarRecovery,
+      dollarRecovery,
       totalKitchen: kitchenPositions.length,
-      totalJuglar: juglarPositions.length
+      totalJuglar: juglarPositions.length,
+      totalDollar: dollarPositions.length
     });
   };
 
@@ -463,352 +519,46 @@ export default function CycleAnalysis() {
     loadData();
   }, [selectedPeriod]);
 
-  // ETF图表组件
-  const ETFChart = ({ etfData }) => {
-    const chartRef = useRef(null);
-    const chartInstance = useRef(null);
 
-    useEffect(() => {
-      if (!etfData.data || etfData.data.length === 0) return;
 
-      const prices = etfData.data.map(item => item.close);
-      console.log(`${etfData.name} 价格数据:`, prices.slice(0, 5), '...', prices.slice(-5));
-      
-      const macd = calculateMACD(prices);
-      console.log(`${etfData.name} MACD数据:`, {
-        macdLine: macd.macdLine.slice(-3),
-        signalLine: macd.signalLine.slice(-3),
-        histogram: macd.histogram.slice(-3)
-      });
-      
-      const boll = calculateBOLL(prices);
-      console.log(`${etfData.name} 布林带数据:`, {
-        upper: boll.upper.slice(-3),
-        middle: boll.middle.slice(-3),
-        lower: boll.lower.slice(-3)
-      });
-
-      // 准备ECharts数据
-      const dates = etfData.data.map(item => item.date);
-      
-      // K线数据 [开盘, 收盘, 最低, 最高]
-      const klineData = etfData.data.map(item => [
-        item.open, item.close, item.low, item.high
-      ]);
-      
-      // 成交量数据
-      const volumes = etfData.data.map(item => item.volume);
-      
-      // 布林带数据 - 保持原始长度，用null填充无效值
-      const bollUpper = boll.upper.map(val => (!isNaN(val) && val !== null) ? val : null);
-      const bollMiddle = boll.middle.map(val => (!isNaN(val) && val !== null) ? val : null);
-      const bollLower = boll.lower.map(val => (!isNaN(val) && val !== null) ? val : null);
-      
-      // MACD数据 - 保持原始长度，用null填充无效值
-      const macdLine = macd.macdLine.map(val => (!isNaN(val) && val !== null) ? val : null);
-      const signalLine = macd.signalLine.map(val => (!isNaN(val) && val !== null) ? val : null);
-      const histogram = macd.histogram.map(val => (!isNaN(val) && val !== null) ? val : null);
-      
-      console.log(`${etfData.name} 过滤后的数据:`, {
-        klineData: klineData.slice(-3),
-        volumes: volumes.slice(-3),
-        bollUpper: bollUpper.slice(-3),
-        macdLine: macdLine.slice(-3),
-        signalLine: signalLine.slice(-3)
-      });
-
-      const option = {
-        title: {
-          text: `${etfData.name} - 技术分析`,
-          left: 'center',
-          textStyle: {
-            fontSize: 16,
-            fontWeight: 'bold'
-          }
-        },
-        tooltip: {
-          trigger: 'axis',
-          axisPointer: {
-            type: 'cross'
-          },
-          formatter: function (params) {
-            let result = `${params[0].axisValue}<br/>`;
-            params.forEach(param => {
-              if (param.seriesName === 'K线') {
-                const data = param.data;
-                result += `开盘: ${data[1].toFixed(2)}<br/>`;
-                result += `收盘: ${data[2].toFixed(2)}<br/>`;
-                result += `最低: ${data[3].toFixed(2)}<br/>`;
-                result += `最高: ${data[4].toFixed(2)}<br/>`;
-              } else if (param.seriesName === '成交量') {
-                result += `成交量: ${(param.value / 10000).toFixed(0)}万手<br/>`;
-              } else if (param.value !== null && param.value !== undefined) {
-                result += `${param.seriesName}: ${param.value.toFixed(4)}<br/>`;
-              }
-            });
-            return result;
-          }
-        },
-        legend: {
-          data: ['K线', '成交量', '布林上轨', '布林中轨', '布林下轨', 'MACD', '信号线', '柱状图'],
-          top: 30
-        },
-        grid: [
-          {
-            left: '3%',
-            right: '4%',
-            height: '50%'
-          },
-          {
-            left: '3%',
-            right: '4%',
-            top: '60%',
-            height: '15%'
-          },
-          {
-            left: '3%',
-            right: '4%',
-            top: '78%',
-            height: '15%'
-          }
-        ],
-        xAxis: [
-          {
-            type: 'category',
-            data: dates,
-            scale: true,
-            boundaryGap: false,
-            axisLine: { onZero: false },
-            splitLine: { show: false },
-            min: 'dataMin',
-            max: 'dataMax'
-          },
-          {
-            type: 'category',
-            gridIndex: 1,
-            data: dates,
-            scale: true,
-            boundaryGap: false,
-            axisLine: { onZero: false },
-            axisTick: { show: false },
-            splitLine: { show: false },
-            axisLabel: { show: false },
-            min: 'dataMin',
-            max: 'dataMax'
-          },
-          {
-            type: 'category',
-            gridIndex: 2,
-            data: dates,
-            scale: true,
-            boundaryGap: false,
-            axisLine: { onZero: false },
-            axisTick: { show: false },
-            splitLine: { show: false },
-            axisLabel: { show: false },
-            min: 'dataMin',
-            max: 'dataMax'
-          }
-        ],
-        yAxis: [
-          {
-            scale: true,
-            splitArea: {
-              show: true
-            }
-          },
-          {
-            scale: true,
-            gridIndex: 1,
-            splitNumber: 2,
-            axisLabel: { show: false },
-            axisLine: { show: false },
-            axisTick: { show: false },
-            splitLine: { show: false }
-          },
-          {
-            scale: true,
-            gridIndex: 2,
-            splitNumber: 2,
-            axisLabel: { show: false },
-            axisLine: { show: false },
-            axisTick: { show: false },
-            splitLine: { show: false }
-          }
-        ],
-        dataZoom: [
-          {
-            type: 'inside',
-            xAxisIndex: [0, 1, 2],
-            start: 50,
-            end: 100
-          },
-          {
-            show: true,
-            xAxisIndex: [0, 1, 2],
-            type: 'slider',
-            top: '95%',
-            start: 50,
-            end: 100
-          }
-        ],
-        series: [
-          // K线图
-          {
-            name: 'K线',
-            type: 'candlestick',
-            data: klineData,
-            itemStyle: {
-              color: '#ef232a',      // 上涨颜色
-              color0: '#14b143',     // 下跌颜色
-              borderColor: '#ef232a', // 上涨边框
-              borderColor0: '#14b143' // 下跌边框
-            }
-          },
-          // 成交量
-          {
-            name: '成交量',
-            type: 'bar',
-            xAxisIndex: 1,
-            yAxisIndex: 1,
-            data: volumes,
-            itemStyle: {
-              color: function(params) {
-                const data = klineData[params.dataIndex];
-                return data[1] >= data[2] ? '#ef232a' : '#14b143'; // 根据涨跌设置颜色
-              }
-            }
-          },
-          // 布林上轨
-          {
-            name: '布林上轨',
-            type: 'line',
-            data: bollUpper,
-            smooth: true,
-            lineStyle: {
-              width: 1,
-              color: '#ff4d4f',
-              type: 'dashed'
-            },
-            itemStyle: {
-              color: '#ff4d4f'
-            }
-          },
-          // 布林中轨
-          {
-            name: '布林中轨',
-            type: 'line',
-            data: bollMiddle,
-            smooth: true,
-            lineStyle: {
-              width: 1,
-              color: '#52c41a'
-            },
-            itemStyle: {
-              color: '#52c41a'
-            }
-          },
-          // 布林下轨
-          {
-            name: '布林下轨',
-            type: 'line',
-            data: bollLower,
-            smooth: true,
-            lineStyle: {
-              width: 1,
-              color: '#ff4d4f',
-              type: 'dashed'
-            },
-            itemStyle: {
-              color: '#ff4d4f'
-            }
-          },
-          // MACD线
-          {
-            name: 'MACD',
-            type: 'line',
-            xAxisIndex: 2,
-            yAxisIndex: 2,
-            data: macdLine,
-            smooth: true,
-            lineStyle: {
-              width: 2,
-              color: '#1890ff'
-            },
-            itemStyle: {
-              color: '#1890ff'
-            }
-          },
-          // 信号线
-          {
-            name: '信号线',
-            type: 'line',
-            xAxisIndex: 2,
-            yAxisIndex: 2,
-            data: signalLine,
-            smooth: true,
-            lineStyle: {
-              width: 2,
-              color: '#ff4d4f'
-            },
-            itemStyle: {
-              color: '#ff4d4f'
-            }
-          },
-          // 柱状图
-          {
-            name: '柱状图',
-            type: 'bar',
-            xAxisIndex: 2,
-            yAxisIndex: 2,
-            data: histogram,
-            itemStyle: {
-              color: function(params) {
-                return params.value >= 0 ? '#52c41a' : '#ff4d4f';
-              }
-            }
-          }
-        ]
-      };
-
-      // 初始化图表
-      if (chartRef.current && !chartInstance.current) {
-        chartInstance.current = echarts.init(chartRef.current);
-        chartInstance.current.setOption(option);
-        
-        // 监听窗口大小变化
-        const handleResize = () => {
-          if (chartInstance.current) {
-            chartInstance.current.resize();
-          }
-        };
-        window.addEventListener('resize', handleResize);
-        
-        return () => {
-          window.removeEventListener('resize', handleResize);
-          if (chartInstance.current) {
-            chartInstance.current.dispose();
-            chartInstance.current = null;
-          }
-        };
-      }
-    }, [etfData]);
-
+  // 渲染ETF图表
+  const renderETFChart = (etfData) => {
     if (!etfData.data || etfData.data.length === 0) {
       return <Alert message="数据加载失败" type="error" />;
     }
 
+    const prices = etfData.data.map(item => item.close);
+    const boll = calculateBOLL(prices);
+    const macd = calculateMACD(prices);
+
+    // 准备MACD数据，确保柱状图包含颜色信息
+    const macdData = {
+      macd: etfData.data.map((item, index) => ({
+        time: item.date,
+        value: macd.macdLine[index] || null
+      })).filter(item => item.value !== null),
+      
+      signal: etfData.data.map((item, index) => ({
+        time: item.date,
+        value: macd.signalLine[index] || null
+      })).filter(item => item.value !== null),
+      
+      histogram: etfData.data.map((item, index) => ({
+        time: item.date,
+        value: macd.histogram[index] || null,
+        color: (macd.histogram[index] || 0) >= 0 ? '#52c41a' : '#ff4d4f'
+      })).filter(item => item.value !== null)
+    };
+
     return (
-      <div 
-        ref={chartRef}
-        style={{ width: '100%', height: '600px' }}
+      <CombinedChart
+        klineData={etfData.data}
+        showBollingerBands={false}
+        showVolume={false}
+        showMACD={false}
+        klineHeight={500}
       />
     );
-  };
-
-  // 渲染ETF图表
-  const renderETFChart = (etfData) => {
-    return <ETFChart etfData={etfData} />;
   };
 
   // 渲染ETF分析卡片
@@ -863,7 +613,7 @@ export default function CycleAnalysis() {
         }
       >
         <Row gutter={16}>
-          <Col span={6}>
+          <Col span={8}>
             <Statistic
               title="当前价格"
               value={analysis.currentPrice}
@@ -871,7 +621,7 @@ export default function CycleAnalysis() {
               prefix={analysis.priceChange > 0 ? <RiseOutlined style={{ color: '#52c41a' }} /> : <FallOutlined style={{ color: '#ff4d4f' }} />}
             />
           </Col>
-          <Col span={6}>
+          <Col span={8}>
             <Statistic
               title="涨跌幅"
               value={analysis.priceChange}
@@ -879,7 +629,7 @@ export default function CycleAnalysis() {
               valueStyle={{ color: analysis.priceChange > 0 ? '#52c41a' : '#ff4d4f' }}
             />
           </Col>
-          <Col span={6}>
+          <Col span={8}>
             <Statistic
               title="置信度"
               value={analysis.confidence}
@@ -887,47 +637,8 @@ export default function CycleAnalysis() {
               valueStyle={{ color: analysis.confidence > 70 ? '#52c41a' : analysis.confidence > 50 ? '#faad14' : '#ff4d4f' }}
             />
           </Col>
-          <Col span={6}>
-            <Statistic
-              title="MACD"
-              value={analysis.macd?.macd?.toFixed(4) || 'N/A'}
-              valueStyle={{ 
-                color: analysis.macd?.trend === 'bullish' ? '#52c41a' : '#ff4d4f',
-                fontSize: '12px'
-              }}
-            />
-          </Col>
         </Row>
         
-        {/* 技术指标详情 */}
-        {analysis.macd && analysis.boll && (
-          <Row gutter={16} style={{ marginTop: 12 }}>
-            <Col span={8}>
-              <div style={{ fontSize: '12px', color: '#666' }}>
-                <div>MACD: {analysis.macd.macd?.toFixed(4)}</div>
-                <div>信号线: {analysis.macd.signal?.toFixed(4)}</div>
-                <Tag color={analysis.macd.trend === 'bullish' ? 'green' : 'red'} style={{ marginLeft: 4 }}>
-                  {analysis.macd.trend === 'bullish' ? '金叉' : '死叉'}
-                </Tag>
-              </div>
-            </Col>
-            <Col span={8}>
-              <div style={{ fontSize: '12px', color: '#666' }}>
-                <div>布林上轨: {analysis.boll.upper?.toFixed(2)}</div>
-                <div>布林下轨: {analysis.boll.lower?.toFixed(2)}</div>
-                <Tag color={analysis.boll.position === 'overbought' ? 'red' : analysis.boll.position === 'oversold' ? 'green' : 'default'} style={{ marginLeft: 4 }}>
-                  {analysis.boll.position === 'overbought' ? '超买' : analysis.boll.position === 'oversold' ? '超卖' : '正常'}
-                </Tag>
-              </div>
-            </Col>
-            <Col span={8}>
-              <div style={{ fontSize: '12px', color: '#666' }}>
-                <div>SMA20: {analysis.sma20?.toFixed(2)}</div>
-                <div>SMA50: {analysis.sma50?.toFixed(2)}</div>
-              </div>
-            </Col>
-          </Row>
-        )}
         <div style={{ marginTop: 16 }}>
           <Progress 
             percent={analysis.confidence} 
@@ -966,6 +677,7 @@ export default function CycleAnalysis() {
             >
               <Option value="1w">周线</Option>
               <Option value="1M">月线</Option>
+              <Option value="1Q">季线</Option>
             </Select>
             <Button type="primary" onClick={loadData} loading={loading}>
               刷新数据
@@ -984,7 +696,8 @@ export default function CycleAnalysis() {
                 <div>{cyclePosition.description}</div>
                 <div style={{ marginTop: 8, fontSize: 12, color: '#666' }}>
                   基钦周期复苏板块: {cyclePosition.kitchenRecovery}/{cyclePosition.totalKitchen} | 
-                  朱格拉周期复苏板块: {cyclePosition.juglarRecovery}/{cyclePosition.totalJuglar}
+                  朱格拉周期复苏板块: {cyclePosition.juglarRecovery}/{cyclePosition.totalJuglar} |
+                  美元周期复苏: {cyclePosition.dollarRecovery}/{cyclePosition.totalDollar}
                 </div>
               </div>
             }
@@ -1000,10 +713,10 @@ export default function CycleAnalysis() {
             <h3>基钦周期 - 库存周期分析</h3>
             <p style={{ color: '#666', marginBottom: 16 }}>
               基钦周期（3-4年）主要反映库存变化，关注代表工业与原材料需求的板块。
-              如果这些板块结束长期下跌或盘整，开始稳健上涨且成交量放大，可能暗示补库存需求启动。
+              通过月线/周线级别的K线走势，识别补库存需求的启动信号。
               <br />
               <span style={{ fontSize: '12px', color: '#999' }}>
-                * 数据范围：月线60根（5年历史），周线120根（约2.3年历史）
+                * 大走势分析：季线60根（15年历史），月线60根（5年历史），周线120根（约2.3年历史）
               </span>
             </p>
           </div>
@@ -1025,10 +738,10 @@ export default function CycleAnalysis() {
             <h3>朱格拉周期 - 设备投资周期分析</h3>
             <p style={{ color: '#666', marginBottom: 16 }}>
               朱格拉周期（7-10年）主要反映设备投资变化，关注代表设备与资本支出的板块。
-              如果这些板块出现长期底部放量并突破关键压力位，可能反映企业资本开支意愿回升。
+              通过月线/周线级别的K线走势，识别企业资本开支意愿的回升信号。
               <br />
               <span style={{ fontSize: '12px', color: '#999' }}>
-                * 数据范围：月线60根（5年历史），周线120根（约2.3年历史）
+                * 大走势分析：季线60根（15年历史），月线60根（5年历史），周线120根（约2.3年历史）
               </span>
             </p>
           </div>
@@ -1038,6 +751,31 @@ export default function CycleAnalysis() {
             </div>
           ) : (
             Object.values(juglarData).map(etfData => (
+              <div key={etfData.code}>
+                {renderETFCard(etfData)}
+              </div>
+            ))
+          )}
+        </TabPane>
+
+        <TabPane tab="美元周期分析" key="dollar">
+          <div style={{ marginBottom: 16 }}>
+            <h3>美元周期 - 美元指数分析</h3>
+            <p style={{ color: '#666', marginBottom: 16 }}>
+              美元周期主要反映美元强弱变化，影响全球资本流动和商品价格。
+              通过美元指数的长期走势，识别美元强弱周期对全球市场的影响。
+              <br />
+              <span style={{ fontSize: '12px', color: '#999' }}>
+                * 大走势分析：季线60根（15年历史），月线60根（5年历史），周线120根（约2.3年历史）
+              </span>
+            </p>
+          </div>
+          {loading ? (
+            <div style={{ textAlign: 'center', padding: 50 }}>
+              <Spin size="large" />
+            </div>
+          ) : (
+            Object.values(dollarData).map(etfData => (
               <div key={etfData.code}>
                 {renderETFCard(etfData)}
               </div>

@@ -10,6 +10,11 @@ export class StockService {
     // 8开头：新三板 (800001, 800002等)
     // 1开头：ETF (100001, 100002等) - 深圳市场
     // 5开头：ETF (500001, 500002等) - 上海市场
+    // UDI开头：美元指数 - 全球指数
+    // 特殊代码处理
+    if (code === 'UDI' || code.startsWith('UDI')) {
+      return '2'; // 全球指数市场
+    }
     
     if (code.startsWith('0') || code.startsWith('3') || code.startsWith('8') || code.startsWith('1')) {
       return '0'; // 深圳市场
@@ -32,6 +37,7 @@ export class StockService {
       '1d': '101',         // 日线
       '1w': '102',        // 周线
       '1M': '103',        // 月线
+      '1Q': '104',        // 季线
       '15m': '15',        // 15分钟
       '30m': '30',        // 30分钟
       '1h': '60',         // 1小时
@@ -169,7 +175,9 @@ export class StockService {
 
   // 获取市场名称
   static getMarketName(code) {
-    if (code.startsWith('000')) {
+    if (code === 'UDI' || code.startsWith('UDI')) {
+      return '美元指数';
+    } else if (code.startsWith('000')) {
       return '深圳主板';
     } else if (code.startsWith('002')) {
       return '深圳中小板';
@@ -187,6 +195,33 @@ export class StockService {
       return '上海ETF';
     } else {
       return '未知市场';
+    }
+  }
+
+  // 测试美元指数数据获取
+  static async testUDIData() {
+    try {
+      console.log('测试美元指数数据获取...');
+      const url = this.getKlineUrl('UDI', 60, '1M');
+      console.log('美元指数请求URL:', url);
+      
+      const response = await fetch(url);
+      console.log('美元指数响应状态:', response.status);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP错误: ${response.status} ${response.statusText}`);
+      }
+      
+      const text = await response.text();
+      console.log('美元指数响应数据长度:', text.length);
+      console.log('美元指数响应数据:', text.substring(0, 500));
+      
+      const result = this.parseKlineData(text);
+      console.log('美元指数解析成功，数据条数:', result.length);
+      return result;
+    } catch (error) {
+      console.error('获取美元指数数据失败:', error);
+      throw error;
     }
   }
 }
