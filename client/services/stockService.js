@@ -198,6 +198,151 @@ export class StockService {
     }
   }
 
+  // 获取股票搜索URL
+  static getSearchUrl(keyword, pageIndex = 1, pageSize = 10, label = 'ALL', callbackName) {
+    const baseUrl = 'https://search-codetable.eastmoney.com/codetable/search/web/wap';
+    const params = new URLSearchParams({
+      keyword,
+      label,
+      pageIndex: pageIndex.toString(),
+      pageSize: pageSize.toString(),
+      isHighLight: 'true',
+      client: 'wap',
+      clientType: 'wapSearch',
+      clientVersion: 'lastest',
+      preTag: '<em>',
+      postTag: '</em>',
+      cb: callbackName,
+      _: Date.now().toString()
+    });
+    return `${baseUrl}?${params.toString()}`;
+  }
+
+  // 解析股票搜索结果（JSONP格式）
+  static parseSearchDataFromJsonp(data) {
+    try {
+      if (data.code === '0' && data.result && data.result.quoteList) {
+        return data.result.quoteList.map((item) => ({
+          code: item.code,
+          name: item.shortName.replace(/<em>/g, '').replace(/<\/em>/g, ''),
+          market: item.market,
+          marketName: item.securityTypeName,
+          pinyin: item.pinyin,
+          securityType: item.securityType,
+          status: item.status,
+          flag: item.flag
+        }));
+      } else {
+        throw new Error('搜索API返回数据格式错误');
+      }
+    } catch (error) {
+      console.error('解析股票搜索结果失败:', error);
+      throw new Error('无法解析股票搜索结果');
+    }
+  }
+
+  // 解析股票搜索结果（文本格式，保留作为备用）
+  static parseSearchData(response) {
+    try {
+      // 处理JSONP响应格式
+      const start = response.indexOf('(');
+      const end = response.lastIndexOf(')');
+      if (start !== -1 && end !== -1) {
+        const jsonStr = response.substring(start + 1, end);
+        const data = JSON.parse(jsonStr);
+        
+        if (data.code === '0' && data.result && data.result.quoteList) {
+          return data.result.quoteList.map((item) => ({
+            code: item.code,
+            name: item.shortName.replace(/<em>/g, '').replace(/<\/em>/g, ''),
+            market: item.market,
+            marketName: item.securityTypeName,
+            pinyin: item.pinyin,
+            securityType: item.securityType,
+            status: item.status,
+            flag: item.flag
+          }));
+        } else {
+          throw new Error('搜索API返回数据格式错误');
+        }
+      } else {
+        throw new Error('无法解析JSONP响应格式');
+      }
+    } catch (error) {
+      console.error('解析股票搜索结果失败:', error);
+      throw new Error('无法解析股票搜索结果');
+    }
+  }
+
+  // JSONP请求方法
+  static jsonpRequest(url, callbackName) {
+    return new Promise((resolve, reject) => {
+      // 创建script标签
+      const script = document.createElement('script');
+      script.src = url;
+      script.async = true;
+      
+      // 设置全局回调函数
+      window[callbackName] = (data) => {
+        // 清理
+        document.head.removeChild(script);
+        delete window[callbackName];
+        resolve(data);
+      };
+      
+      // 错误处理
+      script.onerror = () => {
+        document.head.removeChild(script);
+        delete window[callbackName];
+        reject(new Error('JSONP请求失败'));
+      };
+      
+      // 添加到页面
+      document.head.appendChild(script);
+    });
+  }
+
+  // 搜索股票
+  static async searchStocks(keyword, pageIndex = 1, pageSize = 10, label = 'ALL') {
+    try {
+      // 创建唯一的回调函数名
+      const callbackName = `jQuery${Date.now()}_${Math.random().toString().substring(2, 15)}`;
+      
+      const url = this.getSearchUrl(keyword, pageIndex, pageSize, label, callbackName);
+      console.log('股票搜索请求URL:', url);
+
+      const data = await this.jsonpRequest(url, callbackName);
+      console.log('搜索响应数据:', data);
+
+      const result = this.parseSearchDataFromJsonp(data);
+      console.log('搜索成功，结果数量:', result.length);
+      return result;
+    } catch (error) {
+      console.error('搜索股票失败:', error);
+      throw error;
+    }
+  }
+
+  // 获取股票标签列表
+  static async getStockLabels() {
+    try {
+      // 使用一个简单的搜索来获取标签列表
+      const url = this.getSearchUrl('a', 1, 1);
+      const data = await this.jsonpRequest(url);
+      
+      if (data.code === '0' && data.result && data.result.tagList) {
+        return data.result.tagList.map(tag => ({
+          name: tag.name,
+          desc: tag.desc
+        }));
+      }
+      return [];
+    } catch (error) {
+      console.error('获取股票标签失败:', error);
+      return [];
+    }
+  }
+
   // 测试美元指数数据获取
   static async testUDIData() {
     try {

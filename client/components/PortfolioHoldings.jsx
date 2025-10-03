@@ -28,7 +28,8 @@ import {
   FolderAddOutlined,
   FolderOutlined,
   DownloadOutlined,
-  UploadOutlined
+  UploadOutlined,
+  SearchOutlined
 } from '@ant-design/icons';
 import { StockService } from '../services/stockService.js';
 import { SimpleIndicators } from '../utils/simpleIndicators.js';
@@ -74,6 +75,10 @@ export default function PortfolioHoldings() {
   const [editingGroup, setEditingGroup] = useState(null);
   const [isImportModalVisible, setIsImportModalVisible] = useState(false);
   const [importData, setImportData] = useState('');
+  const [isSearchModalVisible, setIsSearchModalVisible] = useState(false);
+  const [searchKeyword, setSearchKeyword] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [searchLoading, setSearchLoading] = useState(false);
 
   // 初始化持仓数据
   useEffect(() => {
@@ -154,6 +159,78 @@ export default function PortfolioHoldings() {
     } catch (error) {
       console.error('导入数据失败:', error);
       message.error('数据格式错误，请检查JSON格式');
+    }
+  };
+
+  // 搜索股票
+  const handleSearchStocks = async () => {
+    if (!searchKeyword.trim()) {
+      message.warning('请输入搜索关键词');
+      return;
+    }
+
+    setSearchLoading(true);
+    try {
+      const results = await StockService.searchStocks(searchKeyword.trim(), 1, 20);
+      setSearchResults(results);
+      console.log('搜索结果:', results);
+    } catch (error) {
+      console.error('搜索股票失败:', error);
+      message.error('搜索失败，请稍后重试');
+    } finally {
+      setSearchLoading(false);
+    }
+  };
+
+  // 选择搜索到的股票
+  const handleSelectStock = async (stock) => {
+    const stockCode = stock.code;
+    
+    // 检查是否已存在
+    if (holdings[selectedGroup]?.some(s => s.code === stockCode)) {
+      message.warning('该股票已在当前分组中');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // 获取股票基本信息
+      const stockInfo = await StockService.getStockInfo(stockCode);
+      console.log('股票信息:', stockInfo);
+      
+      // 验证股票代码是否有效
+      const klineData = await StockService.getKlineData(stockCode, 10);
+      if (klineData.length === 0) {
+        message.error('无效的股票代码');
+        return;
+      }
+
+      const newStock = {
+        code: stockCode,
+        name: stockInfo?.name || stock.name || `股票${stockCode}`,
+        price: klineData[klineData.length - 1].close,
+        change: klineData[klineData.length - 1].rate,
+        market: StockService.getMarketName(stockCode),
+        addedTime: new Date().toLocaleString(),
+        rating: null,
+        lastAnalysis: null
+      };
+
+      const newHoldings = {
+        ...holdings,
+        [selectedGroup]: [...(holdings[selectedGroup] || []), newStock]
+      };
+
+      saveHoldings(newHoldings);
+      setIsSearchModalVisible(false);
+      setSearchKeyword('');
+      setSearchResults([]);
+      message.success(`已添加股票 ${stockInfo?.name || stock.name || stockCode} 到 ${selectedGroup} 分组`);
+    } catch (error) {
+      console.error('添加股票失败:', error);
+      message.error('添加股票失败，请检查股票代码');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -759,7 +836,7 @@ export default function PortfolioHoldings() {
       
 
         <Row gutter={16} className="mb-1">
-          <Col span={8}>
+          <Col span={6}>
             <Input
               placeholder="输入股票代码，如：000001"
               value={newStockCode}
@@ -768,7 +845,7 @@ export default function PortfolioHoldings() {
               style={{ marginRight: 8 }}
             />
           </Col>
-          <Col span={4}>
+          <Col span={3}>
             <Button 
               type="primary" 
               icon={<PlusOutlined />}
@@ -778,7 +855,15 @@ export default function PortfolioHoldings() {
               添加股票
             </Button>
           </Col>
-          <Col span={4}>
+          <Col span={3}>
+            <Button 
+              icon={<SearchOutlined />}
+              onClick={() => setIsSearchModalVisible(true)}
+            >
+              搜索推荐
+            </Button>
+          </Col>
+          <Col span={3}>
             <Button 
               icon={<ReloadOutlined />}
               onClick={handleBatchAnalyze}
@@ -871,6 +956,97 @@ export default function PortfolioHoldings() {
             />
           </Form.Item>
         </Form>
+      </Modal>
+
+      {/* 股票搜索模态框 */}
+      <Modal
+        title="股票搜索推荐"
+        open={isSearchModalVisible}
+        onCancel={() => {
+          setIsSearchModalVisible(false);
+          setSearchKeyword('');
+          setSearchResults([]);
+        }}
+        footer={null}
+        width={800}
+      >
+        <div style={{ marginBottom: 16 }}>
+          <Alert
+            message="搜索说明"
+            description="输入股票名称、代码或拼音进行搜索，点击搜索结果即可添加到当前分组。"
+            type="info"
+            showIcon
+            style={{ marginBottom: 16 }}
+          />
+        </div>
+        
+        <Row gutter={16} style={{ marginBottom: 16 }}>
+          <Col span={18}>
+            <Input
+              placeholder="输入股票名称、代码或拼音，如：平安银行、000001、PAYH"
+              value={searchKeyword}
+              onChange={(e) => setSearchKeyword(e.target.value)}
+              onPressEnter={handleSearchStocks}
+            />
+          </Col>
+          <Col span={6}>
+            <Button 
+              type="primary" 
+              icon={<SearchOutlined />}
+              onClick={handleSearchStocks}
+              loading={searchLoading}
+              style={{ width: '100%' }}
+            >
+              搜索
+            </Button>
+          </Col>
+        </Row>
+
+        {searchResults.length > 0 && (
+          <div>
+            <h4>搜索结果 ({searchResults.length} 条)</h4>
+            <div style={{ maxHeight: 400, overflowY: 'auto' }}>
+              {searchResults.map((stock, index) => (
+                <Card
+                  key={`${stock.code}-${index}`}
+                  size="small"
+                  style={{ marginBottom: 8, cursor: 'pointer' }}
+                  hoverable
+                  onClick={() => handleSelectStock(stock)}
+                >
+                  <Row justify="space-between" align="middle">
+                    <Col span={16}>
+                      <div>
+                        <strong>{stock.name}</strong>
+                        <span style={{ marginLeft: 8, color: '#666' }}>
+                          {stock.code}
+                        </span>
+                      </div>
+                      <div style={{ color: '#999', fontSize: '12px' }}>
+                        {stock.marketName} | {stock.pinyin}
+                      </div>
+                    </Col>
+                    <Col span={8} style={{ textAlign: 'right' }}>
+                      <Button 
+                        type="primary" 
+                        size="small"
+                        icon={<PlusOutlined />}
+                      >
+                        添加到分组
+                      </Button>
+                    </Col>
+                  </Row>
+                </Card>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {searchKeyword && searchResults.length === 0 && !searchLoading && (
+          <div style={{ textAlign: 'center', padding: '40px 0', color: '#999' }}>
+            未找到相关股票，请尝试其他关键词
+          </div>
+        )}
       </Modal>
 
       {/* 导入数据模态框 */}
