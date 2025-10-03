@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Layout as AntLayout, Menu, Button } from 'antd';
 import { 
@@ -14,6 +14,9 @@ import {
   ClockCircleOutlined,
   StockOutlined
 } from '@ant-design/icons';
+import { useSetAtom } from 'jotai';
+import { initializePortfolioAtom } from '../atoms/portfolioAtoms.js';
+import PortfolioBar from './PortfolioBar.jsx';
 
 const { Header, Content, Sider } = AntLayout;
 
@@ -21,6 +24,12 @@ export default function Layout() {
   const location = useLocation();
   const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(false);
+  const initializePortfolio = useSetAtom(initializePortfolioAtom);
+
+  // 初始化 portfolio 数据
+  useEffect(() => {
+    initializePortfolio();
+  }, [initializePortfolio]);
 
   const menuItems = [
     {
@@ -32,11 +41,6 @@ export default function Layout() {
       key: '/portfolio-holdings',
       icon: <FolderOutlined />,
       label: '持仓股管理',
-    },
-    {
-      key: '/backtest-analysis',
-      icon: <BarChartOutlined />,
-      label: '回归分析',
     },
     {
       key: '/stock-analysis',
@@ -133,6 +137,7 @@ export default function Layout() {
           background: '#f5f5f5',
           minHeight: 'calc(100vh - 64px)'
         }}>
+          <PortfolioBar />
           <Outlet />
         </Content>
       </AntLayout>

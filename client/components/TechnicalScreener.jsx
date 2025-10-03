@@ -34,6 +34,7 @@ import {
   errorAtom
 } from '../atoms/stockAtoms.js';
 import BacktestChart from './BacktestChart.jsx';
+import PortfolioQuickAdd from './PortfolioQuickAdd.jsx';
 
 const { TabPane } = Tabs;
 const { Option } = Select;
@@ -398,6 +399,21 @@ export default function TechnicalScreener() {
           </div>
         );
       }
+    },
+    { 
+      title: '自选股', 
+      key: 'portfolio',
+      width: 100,
+      render: (_, record) => (
+        <PortfolioQuickAdd 
+          stockCode={record.code}
+          showGroupSelector={false}
+          buttonText="加入"
+          buttonType="link"
+          size="small"
+          onSuccess={() => message.success(`已添加 ${record.name} 到自选股`)}
+        />
+      )
     },
     { 
       title: '技术指标', 
