@@ -26,7 +26,6 @@ import {
 import { StockService } from '../services/stockService.js';
 import { SimpleIndicators } from '../utils/simpleIndicators.js';
 import { DataUtils } from '../utils/dataUtils.js';
-import { STOCK_POOLS_EXTENDED, STOCK_POOL_INFO } from '../data/stockPoolsExtended.js';
 import { strategyManager } from '../strategies/index.js';
 import {
   selectedCodeAtom,

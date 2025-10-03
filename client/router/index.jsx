@@ -3,13 +3,14 @@ import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import Layout from '../components/Layout';
 import TechnicalScreener from '../components/TechnicalScreener';
 import PortfolioHoldings from '../components/PortfolioHoldings';
-import BacktestAnalysis from '../components/BacktestAnalysis';
 import StockAnalysis from '../components/StockAnalysis';
 import PortfolioBuilder from '../components/PortfolioBuilder';
 import WyckoffAnalysis from '../components/WyckoffAnalysis';
 import CycleAnalysis from '../components/CycleAnalysis';
+import IndexConstituents from '../components/IndexConstituents';
 import ErrorBoundary from '../components/ErrorBoundary';
 import RouteTest from '../test/routeTest';
+import IndexConstituentsTest from '../test/indexConstituentsTest';
 
 // 路由配置
 const router = createBrowserRouter([
@@ -30,10 +31,6 @@ const router = createBrowserRouter([
         element: <PortfolioHoldings />
       },
       {
-        path: "backtest-analysis",
-        element: <BacktestAnalysis />
-      },
-      {
         path: "stock-analysis",
         element: <StockAnalysis />
       },
@@ -50,8 +47,16 @@ const router = createBrowserRouter([
         element: <CycleAnalysis />
       },
       {
+        path: "index-constituents",
+        element: <IndexConstituents />
+      },
+      {
         path: "test",
         element: <RouteTest />
+      },
+      {
+        path: "index-test",
+        element: <IndexConstituentsTest />
       }
     ]
   }

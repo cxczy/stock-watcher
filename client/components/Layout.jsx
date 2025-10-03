@@ -11,7 +11,8 @@ import {
   MenuUnfoldOutlined,
   FundOutlined,
   LineChartOutlined,
-  ClockCircleOutlined
+  ClockCircleOutlined,
+  StockOutlined
 } from '@ant-design/icons';
 
 const { Header, Content, Sider } = AntLayout;
@@ -56,6 +57,11 @@ export default function Layout() {
       key: '/cycle-analysis',
       icon: <ClockCircleOutlined />,
       label: '市场周期分析',
+    },
+    {
+      key: '/index-constituents',
+      icon: <StockOutlined />,
+      label: '指数成分股',
     },
   ];
 
